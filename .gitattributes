@@ -1,0 +1,7 @@
+*.so filter=lfs diff=lfs merge=lfs -text
+rl_framework/model_pool/pkg/model_pool_pkg/bin/modelpool filter=lfs diff=lfs merge=lfs -text
+hok_env/hok/config.dat filter=lfs diff=lfs merge=lfs -text
+docs/replay-tool.gif filter=lfs diff=lfs merge=lfs -text
+docs/hok_1v1.png filter=lfs diff=lfs merge=lfs -text
+code/gpu_code/learner/model/train/graph.pbtxt filter=lfs diff=lfs merge=lfs -text
+rl_framework/model_pool/pkg/model_pool_pkg/bin/modelpool_proxy filter=lfs diff=lfs merge=lfs -text

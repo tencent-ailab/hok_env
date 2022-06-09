@@ -1,0 +1,70 @@
+FROM mirrors.tencent.com/king-kaiwu/baseline:base_python3.6_cuda10.0_cudnn7.6_nccl2.4.7_openmpi4.0.7_tf1.14_horovod0.16.4
+
+# yum
+RUN rm /var/lib/rpm/__db* && rpm --rebuilddb && \
+    yum clean all && \
+    yum makecache fast && \
+    yum install -y tmux ffmpeg libsodium-devel tmux boost-python36-devel && \
+    rm /var/lib/rpm/__db* && yum clean all && rm -rf /var/cache/yum
+
+# Install monitor
+RUN rm /var/lib/rpm/__db* && rpm --rebuilddb && \
+    yum clean all && \
+    yum makecache fast && \
+    yum install -y https://mirrors.tencent.com/grafana/yum/rpm/grafana-6.2.5-1.x86_64.rpm && \
+    yum install -y https://mirrors.tencent.com/influxdata/yum/el7-x86_64/influxdb-1.7.7.x86_64.rpm && \
+    rm /var/lib/rpm/__db* && yum clean all && rm -rf /var/cache/yum && \
+    mkdir -p /log && \
+    mkdir -p /var/lib/grafana/dashboards && \
+    sed -i "s/;http_port =.*/http_port = 8081/g" /etc/grafana/grafana.ini
+
+# Install inotify-tools for save model
+RUN mkdir -p /data/third_party && cd /data/third_party && \
+    wget https://github.com/inotify-tools/inotify-tools/archive/refs/tags/3.22.6.0.tar.gz -O inotify-tools-3.22.6.0.tar.gz && \
+    tar -xf inotify-tools-3.22.6.0.tar.gz && \
+    cd inotify-tools-3.22.6.0 && \
+    ./autogen.sh && \
+    ./configure --prefix=/usr --libdir=/lib64 && \
+    make -j8 && \
+    make install && \
+    rm -rf /data/third_party/
+
+RUN mv /usr/bin/python /usr/bin/python2 && ln -s /usr/bin/python3 /usr/bin/python
+
+# pip3 dep
+RUN pip3 install --no-cache-dir --upgrade \
+                    opencv-python==4.1.0.25 \
+                    gevent==20.9.0 \
+                    --index-url=https://mirrors.tencent.com/repository/pypi/tencent_pypi/simple \
+                    --extra-index-url=https://mirrors.tencent.com/pypi/simple
+
+# hok_env
+COPY hok_env /hok_env
+RUN pip3 install --no-cache-dir -e /hok_env
+
+# rl_framework
+COPY ./rl_framework/ /rl_framework/
+ 
+RUN cd /rl_framework/common && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/learner && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/mem_pool && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/model_pool && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/predictor && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python setup.py clean --all && rm -rf dist/
+
+RUN pip3 install --no-cache-dir --upgrade build && \
+    cd /rl_framework/monitor && python3 -m build && \
+    pip3 install --no-cache-dir dist/*.whl && rm -rf dist/
+
+COPY ./rl_framework/model_pool/pkg/model_pool_pkg/ /code/framework/model_pool/
+
+# training code
+COPY ./code /code
+COPY ./code/cpu_code/script/sgame_simulator.conf /root/.hok/sgame_simulator.conf
+COPY ./start_dev.sh /start_dev.sh
+
+# monitor config
+COPY code/common/monitor/dashboard/*.json /var/lib/grafana/dashboards/
+COPY code/common/monitor/config/datasource.yaml /etc/grafana/provisioning/datasources/
+COPY code/common/monitor/config/dashboard.yaml /etc/grafana/provisioning/dashboards/
+
+WORKDIR /

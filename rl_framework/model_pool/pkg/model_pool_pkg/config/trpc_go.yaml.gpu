@@ -1,0 +1,86 @@
+global: #全局配置
+  namespace: Development #环境类型，分正式production和非正式development两种类型
+  env_name: test #环境名称，非正式环境下多环境的名称
+
+server: #服务端配置
+  app: modelpool #业务的应用名
+  server: main #进程服务名
+  admin:
+    ip: 127.0.0.1
+    port: 10015
+    read_timeout: 3000
+    write_timeout: 60000
+  bin_path: /usr/local/trpc/bin/ #二进制可执行文件和框架配置文件所在路径
+  conf_path: /usr/local/trpc/conf/ #业务配置文件所在路径
+  data_path: /usr/local/trpc/data/ #业务数据文件所在路径
+  filter: #针对所有service处理函数前后的拦截器列表
+    - simpledebuglog
+    - recovery #拦截框架创建的业务处理协程panic
+  service: #业务服务提供的service，可以有多个
+    - name: trpc.modelpool.main.ModelPool #service的路由名称
+      ip: 0.0.0.0 #服务监听ip地址 可使用占位符 ${ip},ip和nic二选一，优先ip
+      #nic: eth0
+      port: 10013 #服务监听端口 可使用占位符 ${port}
+      network: tcp #网络监听类型  tcp udp
+      protocol: trpc #应用层协议 trpc http
+      timeout: 1000 #请求最长处理时间 单位 毫秒                                         #业务服务提供的service，可以有多个
+    - name: trpc.modelpool.main.ModelPoolHTTP #service的路由名称
+      ip: 0.0.0.0 #服务监听ip地址 可使用占位符 ${ip},ip和nic二选一，优先ip
+      #nic: eth0
+      port: 10014 #服务监听端口 可使用占位符 ${port}
+      network: tcp #网络监听类型  tcp udp
+      protocol: http #应用层协议 trpc http
+      timeout: 1000 #请求最长处理时间 单位 毫秒
+
+modelpool:
+  role: master
+  fileSavePath: files
+  cluster: 
+  ip: __MODELPOOL_IP_HERE__
+  name: 
+  maxStorage: 16GB #单位可选 MB GB TB
+  statisticsBufferSize: 500
+
+client: #客户端调用的后端配置
+  timeout: 1000 #针对所有后端的请求最长处理时间
+  namespace: Development #针对所有后端的环境
+  filter: #针对所有后端调用函数前后的拦截器列表
+  service: #针对单个后端的配置
+    - name: trpc.modelpool.main.ModelPool #后端服务的service name
+      namespace: Development #后端服务的环境
+      network: tcp #后端服务的网络类型 tcp udp 配置优先
+      protocol: trpc #应用层协议 trpc http
+      target: dns://127.0.0.1 #请求服务地址
+      timeout: 1000 #请求最长处理时间
+    # - name: trpc.modelpool.main.ModelPoolHTTP #后端服务的service name
+    #   namespace: Development #后端服务的环境
+    #   network: tcp #后端服务的网络类型 tcp udp 配置优先
+    #   protocol: http #应用层协议 trpc http
+    #   target: dns://__TARGET_HTTP_ADDRESS_HERE__ #请求服务地址
+    #   timeout: 1000 #请求最长处理时间
+
+plugins: #插件配置
+  log: #日志配置
+    default: #默认日志的配置，可支持多输出
+      - writer: console #控制台标准输出 默认
+        level: debug #标准输出日志的级别
+      - writer: file #本地文件日志
+        level: info #本地文件滚动日志的级别
+        writer_config:
+          filename: ../log/modelpool.log #本地文件滚动日志存放的路径
+          max_size: 10 #本地文件滚动日志的大小 单位 MB
+          max_backups: 10 #最大日志文件数
+          max_age: 7 #最大日志保留天数
+          compress: false #日志文件是否压缩
+    monitor: #监控日志
+      - writer: file
+        level: info
+        writer_config:
+          filename: ../log/app.log
+          max_size: 2 #文件滚动日志的大小 单位 MB
+          max_backups: 5 #最大日志文件数
+          max_age: 7 #最大日志保留天数
+          compress: false
+        formatter_config:
+          time_fmt: "2006-01-02T15:04:05.999Z+0700"
+
