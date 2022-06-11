@@ -27,7 +27,7 @@ We also provide a docker image for training on your computer. In a further versi
 
 
 ### Observation and action spaces
-  Please refer to https://aiarena.tencent.com/doc/environments/index.html#v1-environment-mojia-map
+  Please refer to https://aiarena.tencent.com/hok/doc/environments/index.html#v1-environment-mojia-map
 
 ## Running Requirement
 * python 3.6 (see our test dependencies in env.yaml).
