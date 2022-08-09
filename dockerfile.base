@@ -1,4 +1,4 @@
-FROM mirrors.tencent.com/tlinux/tlinux2.4-public:latest
+FROM tencentailab/hok_env:tlinux2.4-public
 
 # python3.6
 RUN rm /var/lib/rpm/__db* && rpm --rebuilddb && yum clean all && yum makecache fast && \
