@@ -1,9 +1,8 @@
-# Honor of Kings Game Environment
+# Honor of Kings AI Open Environment of Tencent(腾讯王者荣耀AI开放环境)
 ![avatar](./docs/hok_1v1.png)
 ## Introduction
-- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of [Honor of kings 1V1](https://pvp.qq.com/). This repository mainly includes the gamecore of  _Honor of Kings_ 1v1, a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework.
-- In the current version, hok_env supports 20 heroes. The gamecore of hok_env runs on the Windows platform, and the package **_hok_env_** needs to be deployed in linux platforms to interact with the gamecore. 
-We also provide a docker image for training on your computer. In a further version, we will release a gamecore server compatible with linux.
+- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of [Honor of kings 1V1](https://pvp.qq.com/). This repository mainly includes _Hok_env SDK_ , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. _Hok_env SDK_ is used to interact with the gamecore of  _Honor of Kings_ 1v1.
+- In the current version, hok_env supports 20 heroes. 
 - Current supported heroes:
   - lubanqihao
   - miyue
@@ -27,14 +26,17 @@ We also provide a docker image for training on your computer. In a further versi
 
 
 ### Observation and action spaces
-  Please refer to https://aiarena.tencent.com/hok/doc/environments/index.html#v1-environment-mojia-map
+  Please refer to https://aiarena.tencent.com/hok/doc/quickstart/index.html
 
 ## Running Requirement
-* python 3.6 (see our test dependencies in env.yaml).
-* Windows 10 /11.
-* Docker
-* wsl 2
 
+* python 3.6+ (see our test dependencies in env.yaml).
+* Windows 10 /11.
+* Docker (to deploy Linux containers)
+* wsl 2 (Windows Subsystem for Linux Version 2.0)
+
+The gamecore of hok_env runs on the Windows platform, and the package **_hok_env_** needs to be deployed in linux platforms to interact with the gamecore. 
+We also provided a docker image for training on your computer. In a further version, we will release a gamecore server compatible with linux.
 ## Installation
 ### Download the hok gamecore 
 You need to post the necessary information  in the form on this page: https://wj.qq.com/s2/10356817/3c6b, we will reply you with the gamecore download link and license file by email.
