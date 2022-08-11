@@ -3,9 +3,7 @@
 ## Introduction
 ![image workflow](https://github.com/tencent-ailab/hok_env/actions/workflows/docker-image.yml/badge.svg)
 
-- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of [Honor of kings 1V1](https://pvp.qq.com/). This repository mainly includes the gamecore of  _Honor of Kings_ 1v1, a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework.
-- In the current version, hok_env supports 20 heroes. The gamecore of hok_env runs on the Windows platform, and the package **_hok_env_** needs to be deployed in linux platforms to interact with the gamecore. 
-We also provide a docker image for training on your computer. In a further version, we will release a gamecore server compatible with linux.
+- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of [Honor of kings 1V1](https://pvp.qq.com/). This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.
 - Current supported heroes:
   - lubanqihao
   - miyue
