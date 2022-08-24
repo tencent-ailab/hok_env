@@ -8,7 +8,6 @@ cur_path = os.path.dirname(__file__)
 sys.path.append(cur_path + "/proto_king/")
 
 # sys.path.append(cur_path + '/lib/')
-from hok.game_render import GameRender
 from hok.env1v1 import HoK1v1
 
 # from hok.env1v1 import load_game

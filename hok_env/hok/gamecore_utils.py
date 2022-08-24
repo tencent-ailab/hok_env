@@ -10,7 +10,7 @@ import signal
 import struct
 import subprocess
 import requests
-
+import random
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -51,8 +51,8 @@ class GameProc:
 
 class GameLauncher:
     def __del__(self):
-        self.close_game(keep_zmq=False)
-
+        # self.close_game(keep_zmq=False)
+        pass
     def clear_runtime_path(self):
         runtime_path = self.runtime_path
         if not os.path.exists(runtime_path):
@@ -152,8 +152,9 @@ class GameLauncher:
         # connect zmq
         for i in range(self.num_player):
             ip = common_dict["ip"]
+            print("ip:",ip)
             addr = "tcp://{}:{}".format(
-                ip, int(self.config_modifier.hero_info[i]["port"])
+                "0.0.0.0", int(self.config_modifier.hero_info[i]["port"])
             )
             if self.addrs[i] != addr:
                 if self.server[i] is not None:
@@ -213,7 +214,7 @@ class GameLauncher:
                 self.server[i] = None
                 print("close ip!", i)
 
-    def close_game(self, keep_zmq=True):
+    def close_game(self, keep_zmq=True,game_id=None):
         self._close_proc()
         if not keep_zmq:
             self._close_zmq_server()
@@ -240,42 +241,39 @@ def send_http_request(
 ):
     if server_addr is None:
         server_addr = "127.0.0.1:23333"
-    url = "https://%s/v1/%s" % (server_addr, req_type)
+    url = "http://{}".format(server_addr)
     headers = {
         "Content-Type": "application/json",
     }
-    data = {
-        "Token": token,
-        "CustomConfig": json.dumps(config),
-    }
-
-    if download_path is not None:
-        data["Path"] = download_path
-        r = requests.post(
-            url=url, data=json.dumps(data), headers=headers, verify=False, stream=True
-        )
-        try:
-            r.raise_for_status()
-            return r
-        except Exception:  # pylint: disable=broad-except
-            print("[Warning] download file {} failed.".format(download_path))
-            traceback.print_exc()
-
+    data = config
+    print("send_http_request data:",data)
+    # if download_path is not None:
+    #     data["Path"] = download_path
+    #     r = requests.post(
+    #         url=url, data=json.dumps(data), headers=headers, verify=False, stream=True
+    #     )
+    #     try:
+    #         r.raise_for_status()
+    #         return r
+    #     except Exception:  # pylint: disable=broad-except
+    #         print("[Warning] download file {} failed.".format(download_path))
+    #         traceback.print_exc()
+    #
+    # else:
+    #     if no_python:
+    #         curl_command = "curl -k {} -d '{}'".format(url, json.dumps(data))
+    #         print("curl_command", curl_command)
+    #         os.system(curl_command)
+    #         return
+    #     else:
+    resp = requests.post(
+        url=url, data=json.dumps(data), headers=headers, verify=False
+    )
+    if resp.ok:
+        ret = resp.json()
+        return ret
     else:
-        if no_python:
-            curl_command = "curl -k {} -d '{}'".format(url, json.dumps(data))
-            print("curl_command", curl_command)
-            os.system(curl_command)
-            return
-        else:
-            resp = requests.post(
-                url=url, data=json.dumps(data), headers=headers, verify=False
-            )
-            if resp.ok:
-                ret = resp.json()
-                return ret
-            else:
-                return {}
+        return {}
 
 
 class RemoteGameProc:
@@ -288,6 +286,7 @@ class RemoteGameProc:
         log_path,
         close_command,
         need_download=True,
+        game_id=""
     ):
         self.user_token = user_token
         self.runtime_id = runtime_id
@@ -297,11 +296,31 @@ class RemoteGameProc:
         self.need_download = need_download
         self.close_command = close_command
         self.log_path = log_path
+        self.game_id=game_id
         self._remote_start()
 
+
     def _remote_start(self):
+        sgame_info={}
+        sgame_info["abs_name"]="./1V1.abs"
+        config_dict=self.start_config["config_dict"]
+        common_config=self.start_config["common_config"]
+        hero_conf=[]
+        for i in range(len(config_dict)):
+            hero_dict={}
+            hero_dict["hero_id"]=ConfigModifier.HERO_DICT[config_dict[i]["hero"]]
+            if not config_dict[i]["use_common_ai"]:
+                hero_dict["request_info"]={"ip":common_config["ip"],"port":config_dict[i]["port"],"timeout":20000}
+            hero_dict["summon_id"]=ConfigModifier.SKILL_DICT[config_dict[i]["skill"]]
+            hero_dict["symbol"]=ConfigModifier.SYMBOL[ConfigModifier.HERO_DICT[config_dict[i]["hero"]]]
+            hero_conf.append(hero_dict)
+        sgame_info["hero_conf"]=hero_conf
+        sgame_info["gameover"] = False
+        sgame_info["game_id"]=self.game_id
+        print("start_config",sgame_info)
+
         send_http_request(
-            self.launch_server, "newGame", self.user_token, self.start_config
+            self.launch_server, "newGame", self.user_token, sgame_info
         )
 
     def _download_results(self, no_python=False):
@@ -333,44 +352,44 @@ class RemoteGameProc:
 
     def __del__(self):
         print("check game stopped.")
-        try:
-            MAX_WAIT = 5
-            need_stop = True
-            for _ in range(MAX_WAIT):
-                ret = send_http_request(
-                    self.launch_server,
-                    "check",
-                    self.user_token,
-                    {"runtime_id": self.runtime_id},
-                )
-
-                print("game is killed?", ret["data"]["ExitCode"] == 0)
-                if ret["data"]["ExitCode"] != 0:
-                    print("wait Game!")
-                    time.sleep(0.5)
-                else:
-                    need_stop = False
-                    break
-            if need_stop:
-                send_http_request(
-                    self.launch_server,
-                    "stopGame",
-                    self.user_token,
-                    {"runtime_id": self.runtime_id},
-                )
-
-            self._download_results()
-
-            os.system(self.close_command)
-        except Exception:  # pylint: disable=broad-except
-            print("[Warning] Check game status error, stop it directly.")
-            send_http_request(
-                self.launch_server,
-                "stopGame",
-                self.user_token,
-                {"runtime_id": self.runtime_id},
-                no_python=True,
-            )
+        # try:
+        #     MAX_WAIT = 5
+        #     need_stop = True
+        #     for _ in range(MAX_WAIT):
+        #         ret = send_http_request(
+        #             self.launch_server,
+        #             "check",
+        #             self.user_token,
+        #             {"runtime_id": self.runtime_id},
+        #         )
+        #
+        #         print("game is killed?", ret["data"]["ExitCode"] == 0)
+        #         if ret["data"]["ExitCode"] != 0:
+        #             print("wait Game!")
+        #             time.sleep(0.5)
+        #         else:
+        #             need_stop = False
+        #             break
+        #     if need_stop:
+        #         send_http_request(
+        #             self.launch_server,
+        #             "stopGame",
+        #             self.user_token,
+        #             {"runtime_id": self.runtime_id},
+        #         )
+        #
+        #     self._download_results()
+        #
+        #     os.system(self.close_command)
+        # except Exception:  # pylint: disable=broad-except
+        #     print("[Warning] Check game status error, stop it directly.")
+        #     send_http_request(
+        #         self.launch_server,
+        #         "stopGame",
+        #         self.user_token,
+        #         {"runtime_id": self.runtime_id},
+        #         no_python=True,
+        #     )
 
 
 class GameLauncherRemote(GameLauncher):
@@ -395,6 +414,8 @@ class GameLauncherRemote(GameLauncher):
         self.remote_gc_proc = None
         self.load_token()
         self.lib_processor = lib_processor
+        self.gameover_sent = True
+        self.config_modifier.common_config["ip"]=self.aiserver_ip
 
     def load_token(self, path="~/.hok/token"):
         # path = os.path.expanduser(path)
@@ -418,11 +439,12 @@ class GameLauncherRemote(GameLauncher):
             log_path=self.log_path,
             close_command=close_command,
             need_download=not self.local_server,
+            game_id=start_config["common_config"]["game_id"]
         )
 
     def _close_remote_proc(self):
         if hasattr(self, "remote_gc_proc") and self.remote_gc_proc is not None:
-            del self.remote_gc_proc
+            # del self.remote_gc_proc
             self.remote_gc_proc = None
 
     def start(self, config_dict, common_config, need_log=False):
@@ -435,14 +457,42 @@ class GameLauncherRemote(GameLauncher):
             if d is not None and d.get("ip") is not None:
                 d["ip"] = self.aiserver_ip
         common_config["ip"] = self.aiserver_ip
-
-        start_config = {"config_dict": config_dict, "common_config": common_config}
+        self.gameover_sent=False
+        self.start_config = {"config_dict": config_dict, "common_config": common_config}
         self.config_modifier.update_config(config_dict, common_config)
         self.need_close = True
-        self._launch_remote_proc(start_config)
+        self._launch_remote_proc(self.start_config)
         self._launch_zmq_server()
 
-    def close_game(self, keep_zmq=True):
+    def close_game(self, keep_zmq=True,game_id=None):
+        print("launch close game",game_id)
+        assert game_id is not None
+        self.gameover_sent=True
+        sgame_info = {}
+        sgame_info["abs_name"] = "./1V1.abs"
+        config_dict = self.start_config["config_dict"]
+        common_config = self.start_config["common_config"]
+        hero_conf = []
+        for i in range(len(config_dict)):
+            hero_dict = {}
+            hero_dict["hero_id"] = ConfigModifier.HERO_DICT[config_dict[i]["hero"]]
+            if not config_dict[i]["use_common_ai"]:
+                hero_dict["request_info"] = {"ip": common_config["ip"], "port": config_dict[i]["port"],
+                                             "timeout": 20000}
+            hero_dict["summon_id"] = ConfigModifier.SKILL_DICT[config_dict[i]["skill"]]
+            hero_dict["symbol"] = ConfigModifier.SYMBOL[ConfigModifier.HERO_DICT[config_dict[i]["hero"]]]
+            hero_conf.append(hero_dict)
+        sgame_info["hero_conf"] = hero_conf
+        sgame_info["gameover"] = True
+        sgame_info["game_id"]=game_id
+        send_http_request(
+            self.launch_server,
+            "download",
+            self.user_token,
+            sgame_info,
+            download_path=None,
+            no_python=True)
+        print("start close remote proc")
         self._close_remote_proc()
         if not keep_zmq:
             self._close_zmq_server()
@@ -578,7 +628,7 @@ class ConfigModifier:
 
     def load_config(self, config_path):
         print("load config...")
-
+        print("common_config",self.common_config)
         config_path = os.path.join(config_path, "sgame_simulator.conf")
         assert os.path.exists(config_path), "default config {} not exist".format(
             config_path
