@@ -622,14 +622,14 @@ class HoK1v1:
         close game by sending signals to gamecore
         """
         # for i in range(self.PLAYER_NUM):
-        #     # silently skip if is common ai
-        #     if not self.need_predict(i):
-        #         continue
-        #     self._gameover(i, True)
+            # silently skip if is common ai
+            # if not self.need_predict(i):
+            #     continue
+            # self._gameover(i, True)
         while not self.is_gameover:
             print("game not end, send close game at first", self.cur_frame_no)
             for i in range(self.PLAYER_NUM):
-
+                print("close game i",i)
                 # silently skip if is common ai
                 if not self.need_predict(i):
                     continue
@@ -639,14 +639,18 @@ class HoK1v1:
                 )
                 if parse_state != interface.PARSE_CONTINUE:
                     continue
+                self._gameover(i, True)
                 req_pb = self.lib_proccessor.GetAIFrameState(sgame_id)
+                print(req_pb)
                 if req_pb.gameover:
                     self.is_gameover = True
 
-                self._gameover(i, True)
 
-        self.gameover_sent = False
-        self.game_launcher.close_game(keep_zmq=True)
+                # self.gameover_sent=True
+        # self.gameover_sent = False
+        if not self.game_launcher.gameover_sent:
+            print("close game",self.game_id)
+            self.game_launcher.close_game(keep_zmq=True,game_id=self.game_id)
 
     def reset(
         self,
@@ -676,11 +680,6 @@ class HoK1v1:
             config_dicts = [{} for _ in range(self.PLAYER_NUM)]
         if eval is not None:
             self.eval_mode = eval
-
-        self.render = render
-        if self.render is not None:
-            self.render.reset("0")
-
         # reset infos
         sgame_ids = []
         if self.cur_sgame_ids:
@@ -699,7 +698,7 @@ class HoK1v1:
         # print("Reset Done, game_launcher {} start".format(game_id))
         if game_id is None:
             game_id = self.game_launcher.generate_game_id()
-
+        print("reset game_id",game_id)
         self.game_id = game_id
         common_config["game_id"] = self.game_id
         self.is_gameover = False
@@ -768,8 +767,6 @@ class HoK1v1:
         return response
 
     def _gameover(self, id, force_send=False):
-        if self.gameover_sent and not force_send:
-            return
-        self.gameover_sent = True
-
+        # self.gameover_sent = True
+        print("GAMEOVER",id)
         self._send((ResponceType.GAMEOVER, -1), id)

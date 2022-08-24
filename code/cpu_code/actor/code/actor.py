@@ -178,8 +178,9 @@ class Actor:
         render = self.render if eval else None
         # restart a new game
         # reward :[dead,ep_rate,exp,hp_point,kill,last_hit,money,tower_hp_point,reward_sum]
+        print("prepare to reset ",env_config,use_common_ai,eval)
         _, r, d, state_dict = self.env.reset(
-            env_config, use_common_ai=use_common_ai, eval=eval, render=render
+            env_config, use_common_ai=use_common_ai, eval=eval, render=None
         )
         if state_dict[0] is None:
             game_id = state_dict[1]["game_id"]
@@ -272,8 +273,10 @@ class Actor:
                 )
 
         for i, agent in enumerate(self.agents):
+            print("use common_ai",use_common_ai)
             if use_common_ai[i]:
                 continue
+            print("reqpb ",i,req_pbs[i].hero_list)
             for hero_state in req_pbs[i].hero_list:
                 if agent.player_id == hero_state.runtime_id:
                     episode_infos[i]["money_per_frame"] = (
@@ -298,7 +301,7 @@ class Actor:
             else:
                 episode_infos[i]["win"] = -1 if agent.hero_camp == loss_camp else 1
 
-            # print("rewards {} :".format(i),rewards[i])
+            print("rewards {} :".format(i),rewards[i])
             episode_infos[i]["reward"] = np.sum(rewards[i])
             episode_infos[i]["h_act_rate"] = episode_infos[i]["h_act_num"] / step
 
@@ -309,6 +312,7 @@ class Actor:
 
         log_time_func("one_episode", end=True)
         # print game information
+        print("episode_infos",episode_infos)
         self._print_info(
             game_id, game_info, episode_infos, eval, eval_info, common_ai=use_common_ai
         )
