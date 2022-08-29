@@ -81,8 +81,8 @@ if __name__ == "__main__":
         or len(GC_SERVER_ADDR) == 0
     ):
         # local gc server
-        GC_SERVER_ADDR = "172.17.208.1:8011"
-        AI_SERVER_ADDR = "172.17.208.182"
+        GC_SERVER_ADDR = "127.0.0.1:8011"
+        AI_SERVER_ADDR = "0.0.0.0"
         remote_mode = 2
     else:
         # remote gc server
