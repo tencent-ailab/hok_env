@@ -3,8 +3,17 @@
 ## Introduction
 ![image workflow](https://github.com/tencent-ailab/hok_env/actions/workflows/docker-image.yml/badge.svg)
 
-- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of [Honor of kings 1V1](https://pvp.qq.com/). This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.
-- Current supported heroes:
+- [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of the MOBA game: [Honor of kings 1V1](https://pvp.qq.com/). 
+- This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.
+- This repository also contains the implementation code for the paper:
+> **Honor of Kings Arena: an Environment for Generalization in Competitive Reinforcement Learning**.\
+> Hua Wei*, Jingxiao* Chen, Xiyang Ji*, Hongyang Qin, Minwen Deng, Siqin Li, Liang Wang, Weinan Zhang, Yong Yu, Lin Liu, Lanxiao Huang, Deheng Ye, Qiang Fu, Wei Yang. (*Equal contribution) \
+> **NeurIPS Datasets and Benchmarks 2022** \
+> Project Page: https://github.com/tencent-ailab/hok_env \
+> arXiv: https://arxiv.org/abs/2209.08483
+
+> **Abstract**: *This paper introduces Honor of Kings Arena, a reinforcement learning (RL) environment based on Honor of Kings, one of the world’s most popular games at present. Compared to other environments studied in most previous work, ours presents new generalization challenges for competitive reinforcement learning. It is a multiagent problem with one agent competing against its opponent; and it requires the generalization ability as it has diverse targets to control and diverse opponents to compete with. We describe the observation, action, and reward specifications for the Honor of Kings domain and provide an open-source Python-based interface for communicating with the game engine. We provide twenty target heroes with a variety of tasks in Honor of Kings Arena and present initial baseline results for RL-based methods with feasible computing resources. Finally, we showcase the generalization challenges imposed by Honor of Kings Arena and possible remedies to the challenges. All of the software, including the environment-class, are publicly available at: https://github.com/tencent-ailab/hok_env. The documentation is available at: https://aiarena.tencent.com/hok/doc/.*
+- Current supported heroes in hok_env:
   - lubanqihao
   - miyue
   - libai
@@ -24,8 +33,6 @@
   - gongsunli
   - peiqinhu
   - shangguanwaner
-
-
 ### Observation and action spaces
   Please refer to https://aiarena.tencent.com/hok/doc/quickstart/index.html
 
@@ -216,4 +223,15 @@ You can visualize the matches by putting  ABS files under the `Replays` folder a
 
 ```
 https://hub.docker.com/r/tencentailab/hok_env
+```
+## Citation
+If you use the gamecore of hok_env or the code in this repository, please cite our paper as follows.
+```
+@inproceedings{wei2022hok_env,
+  title={Honor of Kings Arena: an Environment for Generalization in Competitive Reinforcement Learning},
+  author={Wei, Hua and Chen, Jingxiao and Ji, Xiyang and Qin, Hongyang and Deng, Minwen and Li, Siqin and Wang, Liang and Zhang, Weinan and Yu, Yong and Liu, Lin and Huang, Lanxiao and Ye, Deheng and Fu, Qiang and Yang, Wei},
+  booktitle={Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks},
+  year={2022}
+}
+
 ```
