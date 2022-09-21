@@ -7,7 +7,7 @@
 - This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.
 - This repository also contains the implementation code for the paper:
 > **Honor of Kings Arena: an Environment for Generalization in Competitive Reinforcement Learning**.\
-> Hua Wei*, Jingxiao* Chen, Xiyang Ji*, Hongyang Qin, Minwen Deng, Siqin Li, Liang Wang, Weinan Zhang, Yong Yu, Lin Liu, Lanxiao Huang, Deheng Ye, Qiang Fu, Wei Yang. (*Equal contribution) \
+> Hua Wei*, Jingxiao Chen*, Xiyang Ji*, Hongyang Qin, Minwen Deng, Siqin Li, Liang Wang, Weinan Zhang, Yong Yu, Lin Liu, Lanxiao Huang, Deheng Ye, Qiang Fu, Wei Yang. (*Equal contribution) \
 > **NeurIPS Datasets and Benchmarks 2022** \
 > Project Page: https://github.com/tencent-ailab/hok_env \
 > arXiv: https://arxiv.org/abs/2209.08483
