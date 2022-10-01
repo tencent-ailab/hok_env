@@ -47,8 +47,12 @@ The gamecore of hok_env runs on the Windows platform, and the package **_hok_env
 We also provided a docker image for training on your computer. In a further version, we will release a gamecore server compatible with linux.
 ## Installation
 ### Download the hok gamecore 
-You need to post the necessary information  in the form on this page: https://wj.qq.com/s2/10356817/3c6b, we will reply you with the gamecore download link and license file by email.
-Please put the `license.dat` under the folder:`ai_simulator_remote\core_assets\` and add the path of the folder `ai_simulator_remote` to the system environment variables.
+
+You need to post the necessary information  in the form on this page: https://wj.qq.com/s2/10356817/3c6b, we will reply you with license file by email.
+Please put the `license.dat` under the folder:`hok_env_gamecore/gamecore/core_assets` and add the path of the folder `ai_simulator_remote` to the system environment variables.
+
+Gamecore download link: https://aiarena.tencent.com/hok/download
+
 ![avatar](./docs/sgame_folder.png)
 ### Start the gamecore
 
@@ -221,9 +225,8 @@ You can visualize the matches by putting  ABS files under the `Replays` folder a
 
 ## Pre-built image
 
-```
 https://hub.docker.com/r/tencentailab/hok_env
-```
+
 ## Citation
 If you use the gamecore of hok_env or the code in this repository, please cite our paper as follows.
 ```
