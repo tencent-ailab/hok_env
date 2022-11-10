@@ -48,7 +48,7 @@ We also provided a docker image for training on your computer. In a further vers
 ## Installation
 ### Download the hok gamecore 
 
-You need to apply for the license on this page: [https://wj.qq.com/s2/10356817/3c6b](https://aiarena.tencent.com/aiarena/en/open-gamecore)
+You need to apply for the license on this page: https://aiarena.tencent.com/aiarena/en/open-gamecore
 Please put the `license.dat` under the folder:`hok_env_gamecore/gamecore/core_assets` and add the path of the folder `ai_simulator_remote` to the system environment variables.
 
 Gamecore download link: https://aiarena.tencent.com/hok/download
