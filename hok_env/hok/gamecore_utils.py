@@ -111,6 +111,7 @@ class GameLauncher:
         self.need_close = False
         self.lib_processor = lib_processor
         self.recv_buffer_size = 1 << 20
+        self.gameover_sent = True
 
     def generate_game_id(self):
         dt = datetime.datetime.now()

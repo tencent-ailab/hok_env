@@ -104,7 +104,7 @@ if __name__ == "__main__":
         gamecore_path="./hok",
         config_path=CONFIG_PATH,
         eval_mode=False,
-        remote_param=remote_param,
+        remote_param=None,
     )
 
     # test all 18 heros
