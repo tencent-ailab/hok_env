@@ -58,43 +58,69 @@ Please put the `license.dat` under the folder:`hok_env_gamecore/gamecore/core_as
 ![avatar](./docs/sgame_folder.png)
 ### Start the gamecore
 
-open CMD or Powershell
+open CMD
 ``` shell
- cd ai_simulator_remote
- .\sgame_simulator_remote_zmq.exe "2022" .\sgame_simulator.conf
+ cd gamecore\bin
+ set PATH=%PATH%;..\lib\
+ .\sgame_simulator_remote_zmq.exe .\sgame_simulator.common.conf
 ```
-sgame_simulator_remote_zmq.exe requires two parameters: game_id and config file path
- You can see the following message:
-```angular2html
+
+sgame_simulator_remote_zmq.exe requires one parameters: config file path
+
+You can see the following message:
+```
 PlayerNum:2
-AbsPath:./1V1.abs
-PlayerInfo [CampID:0][HeroID:146][Skill:80121][AutoAi:0][AiServer:127.0.0.1:35300:1000] [Symbol 0 0 0] [Request:-1]
-PlayerInfo [CampID:1][HeroID:146][Skill:80121][AutoAi:0][AiServer:127.0.0.1:35301:1000] [Symbol 0 0 0] [Request:-1]
+AbsPath:../scene/1V1.abs
+PlayerInfo [CampID:0][HeroID:199][Skill:80104][AutoAi:1][AiServer::0:100] [Symbol 0 0 0] [Request:-1]
+PlayerInfo [CampID:1][HeroID:199][Skill:80104][AutoAi:1][AiServer::0:100] [Symbol 0 0 0] [Request:-1]
 SGame Simulator Begin
 init_ret:0
 seed: 3417
 Symbols:
-inHeroId: 146
+inHeroId: 199
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-inHeroId: 146
+inHeroId: 199
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 start_ret:0
-Hero[0] inHeroId:146; outPlayerId:148
-Hero[1] inHeroId:146; outPlayerId:149
-frame no:0
-begin_ret:0
-[Hero Info] [HeroID:146] [RuntimeID:8] client_id:0.0.0.0_1107_0_20220608211153_148
-[Hero Info] [HeroID:146] [RuntimeID:9] client_id:0.0.0.0_1107_0_20220608211153_149
-zmq socket init success
-addr: tcp://127.0.0.1:35300
-zmq socket connect success
-zmq socket init success
-addr: tcp://127.0.0.1:35301
-zmq socket connect success
+Hero[0] inHeroId:199; outPlayerId:148
+Hero[1] inHeroId:199; outPlayerId:149
+[Hero Info] [HeroID:199] [RuntimeID:8] client_id:0.0.0.0_1658_0_20221202193534_148
+[Hero Info] [HeroID:199] [RuntimeID:9] client_id:0.0.0.0_1658_0_20221202193534_149
+boost_ret finished: 8, gameover_ai_server: 0
+close_ret:0
+uninit_ret:0
+SGame Simulator End [FrameNum:8612][TimeUsed:7580ms]
 ```
 The gamecore has started successfully!
+
+---
+
+`sgame_simulator.common.conf`:
+```angular2html
+{
+    "abs_file": "../scene/1V1.abs",
+    "core_assets": "../core_assets",
+    "game_id": "kaiwu-base-35401-35400-6842-1669963820108111766-217",
+    "hero_conf": [
+        {
+            "hero_id": 199
+        },
+        {
+            "hero_id": 199
+        }
+    ]
+}
+```
+
+output files:
+```
+AIOSS_221202-1935_linux_1450111_1450123_1_1_20001_kaiwu-base-35401-35400-6842-1669963820108111766-217.abs
+kaiwu-base-35401-35400-6842-1669963820108111766-217.json
+kaiwu-base-35401-35400-6842-1669963820108111766-217.stat
+kaiwu-base-35401-35400-6842-1669963820108111766-217_detail.stat
+```
 
 
 ### Test the gamecore with the demo script in WSL
@@ -106,6 +132,12 @@ For the installation and upgrade of wsl2, please refer to the link: https://docs
 You need to install python3.6 and some required dependencies in wsl.
 
 #### Run the test script in wsl2
+
+0. Start the gamecore server outside wsl2
+```
+cd gamecore
+gamecore-server.exe server --server-address :23432
+```
 1. Install hok_env in python
 ```
 ## after git clone this repo 
@@ -228,6 +260,8 @@ You can visualize the matches by putting  ABS files under the `Replays` folder a
 ## Pre-built image
 
 https://hub.docker.com/r/tencentailab/hok_env
+
+See also: [run_with_prebuilt_image](./docs/run_with_prebuilt_image.md)
 
 ## Citation
 If you use the gamecore of hok_env or the code in this repository, please cite our paper as follows.
