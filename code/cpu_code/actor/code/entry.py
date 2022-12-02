@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append(".")
-sys.path.append("/code/common/")
+sys.path.append("/code/code/common/")
 import random
 import os
 
@@ -112,6 +112,7 @@ def gc_as_lib(argv):
     actor = Actor(
         id=actor_id,
         agents=agents,
+        gpu_ip=FLAGS.mem_pool_addr.split(":")[0]
     )
     actor.set_sample_managers(sample_manager)
     actor.set_env(env)

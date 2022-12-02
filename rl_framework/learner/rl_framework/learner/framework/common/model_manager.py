@@ -42,7 +42,7 @@ class ModelManager(object):
 
     def save_model(self, sess, save_path):
         if not os.path.exists(save_path):
-            os.mkdir(save_path)
+            os.makedirs(save_path, exist_ok=True)
         checkpoint_path = os.path.join(self.save_model_dir, "model.ckpt")
         if not gfile.Exists(self.save_model_dir):
             gfile.MakeDirs(self.save_model_dir)

@@ -25,4 +25,4 @@ mpirun --allow-run-as-root -np ${Num_process} -H ${Nodelist} -bind-to none -map-
 -x NCCL_CHECK_DISABLE=1  -x NCCL_LL_THRESHOLD=16384 -x HOROVOD_HIERARCHICAL_ALLREDUCE=0 -x HOROVOD_FUSION_THRESHOLD=1 -x HOROVOD_CYCLE_TIME=0.5  -x NCCL_DEBUG=INFO \
 -x LD_LIBRARY_PATH  python3 ${work_path}/train.py \
 --variable_update horovod \
---custom_dataformat True > /logs/gpu_log/strace1.log 2>&1
+--custom_dataformat True > /code/logs/gpu_log/trace1.log 2>&1

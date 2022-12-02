@@ -15,6 +15,7 @@ from rl_framework.model_pool import ModelPoolAPIs
 from framework.common.common_func import log_time
 from config.config import ModelConfig, Config
 import rl_framework.common.logging as LOG
+from hok.agent import AgentBase
 
 
 _G_CHECK_POINT_PREFIX = "checkpoints_"
@@ -35,7 +36,7 @@ class RandomAgent:
         return action, value, neg_log_pi
 
 
-class Agent:
+class Agent(AgentBase):
     def __init__(
         self,
         model_cls,
@@ -44,6 +45,7 @@ class Agent:
         local_mode=False,
         dataset=None,
     ):
+        super().__init__()
         self.model = model_cls()
         self.graph = self.model.build_infer_graph()
 
@@ -436,3 +438,9 @@ class Agent:
         if self.dataset is not None:
             self.save_h5_sample = True
             self.dataset.close()
+
+    def set_lstm_info(self, lstm_info):
+        self.lstm_hidden, self.lstm_cell = lstm_info
+
+    def get_lstm_info(self):
+        return (self.lstm_hidden, self.lstm_cell)

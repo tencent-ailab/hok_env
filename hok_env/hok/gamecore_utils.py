@@ -9,8 +9,8 @@ import time
 import signal
 import struct
 import subprocess
+import socket
 import requests
-import random
 import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -51,8 +51,8 @@ class GameProc:
 
 class GameLauncher:
     def __del__(self):
-        # self.close_game(keep_zmq=False)
-        pass
+        self.close_game(keep_zmq=False)
+
     def clear_runtime_path(self):
         runtime_path = self.runtime_path
         if not os.path.exists(runtime_path):
@@ -111,7 +111,6 @@ class GameLauncher:
         self.need_close = False
         self.lib_processor = lib_processor
         self.recv_buffer_size = 1 << 20
-        self.gameover_sent = True
 
     def generate_game_id(self):
         dt = datetime.datetime.now()
@@ -198,8 +197,8 @@ class GameLauncher:
 
         self.config_modifier.dump_config(config_dict, common_config)
         self.need_close = True
-        self._launch_proc()
         self._launch_zmq_server()
+        self._launch_proc()
 
     def _close_proc(self):
         if hasattr(self, "gc_proc") and self.gc_proc is not None:
@@ -213,7 +212,7 @@ class GameLauncher:
                 self.lib_processor.server_manager.Delete(self.addrs[i])
                 self.server[i] = None
 
-    def close_game(self, keep_zmq=True,game_id=None):
+    def close_game(self, keep_zmq=True):
         self._close_proc()
         if not keep_zmq:
             self._close_zmq_server()
@@ -236,24 +235,45 @@ class GameLauncher:
 
 
 def send_http_request(
-    server_addr, req_type, token, config, download_path=None, no_python=False
+    server_addr,
+    req_type,
+    token,
+    data,
+    download_path=None,
+    no_python=False,
+    ignore_resp=False,
 ):
     if server_addr is None:
         server_addr = "127.0.0.1:23333"
-    url = "http://{}".format(server_addr)
+    url = "http://%s/v2/%s" % (server_addr, req_type)
     headers = {
         "Content-Type": "application/json",
     }
-    data = config
 
-    resp = requests.post(
-        url=url, data=json.dumps(data), headers=headers, verify=False
-    )
-    if resp.ok:
-        ret = resp.json()
-        return ret
+    if download_path is not None:
+        data["Path"] = download_path
+        r = requests.post(
+            url=url, data=json.dumps(data), headers=headers, verify=False, stream=True
+        )
+        try:
+            r.raise_for_status()
+            return r
+        except Exception:  # pylint: disable=broad-except
+            print("[Warning] download file {} failed.".format(download_path))
+            traceback.print_exc()
+
     else:
-        return {}
+        if no_python:
+            curl_command = "curl -k {} -d '{}'".format(url, json.dumps(data))
+            print("curl_command", curl_command)
+            os.system(curl_command)
+            return
+        else:
+            resp = requests.post(url=url, json=data, headers=headers, verify=False)
+            if resp.ok:
+                return resp.content if ignore_resp else resp.json()
+            else:
+                return {}
 
 
 class RemoteGameProc:
@@ -264,74 +284,38 @@ class RemoteGameProc:
         launch_server,
         start_config,
         log_path,
-        close_command,
+        close_command=None,
         need_download=True,
-        game_id=""
     ):
         self.user_token = user_token
-        self.runtime_id = runtime_id
+        self.runtime_id = "actor-1v1-{}".format(runtime_id)
         self.launch_server = launch_server
-        self.start_config = start_config.copy()
-        self.start_config["runtime_id"] = self.runtime_id
-        self.need_download = need_download
-        self.close_command = close_command
+        self.start_config = start_config
         self.log_path = log_path
-        self.game_id=game_id
-        self._remote_start()
 
-
-    def _remote_start(self):
-        sgame_info={}
-        config_dict=self.start_config["config_dict"]
-        common_config=self.start_config["common_config"]
-        camp2_hero_name = config_dict[1]["hero"]
-        sgame_info["abs_name"]=os.path.join("{}.abs".format(camp2_hero_name))
-        hero_conf=[]
-        for i in range(len(config_dict)):
-            hero_dict={}
-            hero_dict["hero_id"]=ConfigModifier.HERO_DICT[config_dict[i]["hero"]]
-            if not config_dict[i]["use_common_ai"]:
-                hero_dict["request_info"]={"ip":common_config["ip"],"port":config_dict[i]["port"],"timeout":20000}
-            hero_dict["summon_id"]=ConfigModifier.SKILL_DICT[config_dict[i]["skill"]]
-            hero_dict["symbol"]=ConfigModifier.SYMBOL[ConfigModifier.HERO_DICT[config_dict[i]["hero"]]]
-            hero_conf.append(hero_dict)
-        sgame_info["hero_conf"]=hero_conf
-        # sgame_info["gameover"] = False
-        sgame_info["game_id"]=self.game_id
-
+    def remote_stop(self):
+        data = {
+            "runtime_id": self.runtime_id,
+        }
         send_http_request(
-            self.launch_server, "newGame", self.user_token, sgame_info
+            self.launch_server, "stopGame", self.user_token, data, ignore_resp=True
         )
 
-    def _download_results(self, no_python=False):
-        if not self.need_download:
-            return
-        ret = send_http_request(
-            self.launch_server,
-            "list",
-            self.user_token,
-            {"runtime_id": self.runtime_id},
-            no_python=no_python,
-        )
-
-        for f in ret["data"]["files"]:
-            print("download file:", f)
-            ret = send_http_request(
-                self.launch_server,
-                "download",
-                self.user_token,
-                {"runtime_id": self.runtime_id},
-                download_path=f,
-                no_python=no_python,
-            )
-            local_fname = os.path.join(self.log_path, f)
-            with open(local_fname, "wb") as f:
-                shutil.copyfileobj(ret.raw, f)
-
-        self.need_download = False
+    def remote_start(self):
+        data = {
+            "simulator_type": "remote_repeat",
+            "runtime_id": self.runtime_id,
+            "simulator_config": self.start_config,
+        }
+        send_http_request(self.launch_server, "newGame", self.user_token, data)
 
     def __del__(self):
         print("check game stopped.")
+        try:
+            self.remote_stop()
+        except Exception as e:  # pylint: disable=broad-except
+            print("[Warning] Check game status error, stop it directly.", e)
+
 
 class GameLauncherRemote(GameLauncher):
     def __init__(
@@ -355,8 +339,7 @@ class GameLauncherRemote(GameLauncher):
         self.remote_gc_proc = None
         self.load_token()
         self.lib_processor = lib_processor
-        self.gameover_sent = True
-        self.config_modifier.common_config["ip"]=self.aiserver_ip
+        self.gamecore_req_timeout = 300000
 
     def load_token(self, path="~/.hok/token"):
         # path = os.path.expanduser(path)
@@ -365,27 +348,76 @@ class GameLauncherRemote(GameLauncher):
         #     self.user_token = f.read().strip()
         self.user_token = self.aiserver_ip.replace(".", "D")
 
-    def _launch_remote_proc(self, start_config):
-        if self.local_server:
-            close_command = "cd {runtime_path}; mv AIOSS*.abs *stat *log {game_log_path}/ > /dev/null 2>&1".format(
-                runtime_path=self.runtime_path, game_log_path=self.log_path
+    def _launch_remote_proc(self, old_start_config):
+
+        # old_start_config = {
+        #     "config_dict": [
+        #         {
+        #             "hero": "gongsunli",
+        #             "skill": "frenzy",
+        #             "use_common_ai": True,
+        #             "port": 35300,
+        #         },
+        #         {
+        #             "hero": "gongsunli",
+        #             "skill": "frenzy",
+        #             "use_common_ai": False,
+        #             "port": 35301,
+        #         },
+        #     ],
+        #     "common_config": {
+        #         "game_id": "gameid-20221122-000900-0",
+        #         "request_freq": 1,
+        #         "ip": "localhost",
+        #     },
+        #     "runtime_id": 0,
+        # }
+        config_dict = old_start_config["config_dict"]
+        common_config = old_start_config["common_config"]
+
+        start_config = {
+            "hero_conf": [],
+        }
+        for idx, hero_config in enumerate(config_dict):
+            hero_id = self.config_modifier.HERO_DICT[hero_config["hero"]]
+            if hero_config["use_common_ai"]:
+                request_info = {}
+            elif idx % (len(config_dict) // 2) == 0:
+                request_info = {
+                    "ip": common_config["ip"],
+                    "port": hero_config["port"],
+                    "timeout": self.gamecore_req_timeout,
+                }
+            else:
+                camp_id = idx // (len(config_dict) // 2)
+                request_id = camp_id * len(config_dict)
+                request_info = {
+                    "request_id": request_id,
+                }
+
+            start_config["hero_conf"].append(
+                {
+                    "hero_id": hero_id,
+                    "request_info": request_info,
+                    "skill_id": self.config_modifier.SKILL_DICT[hero_config["skill"]],
+                    "symbol": [
+                        int(x)
+                        for x in self.config_modifier.SYMBOL[hero_id].strip().split(";")
+                    ],
+                }
             )
-        else:
-            close_command = ""
+
         self.remote_gc_proc = RemoteGameProc(
             self.user_token,
             self.runtime_id,
             self.launch_server,
             start_config,
             log_path=self.log_path,
-            close_command=close_command,
-            need_download=not self.local_server,
-            game_id=start_config["common_config"]["game_id"]
         )
 
     def _close_remote_proc(self):
         if hasattr(self, "remote_gc_proc") and self.remote_gc_proc is not None:
-            # del self.remote_gc_proc
+            del self.remote_gc_proc
             self.remote_gc_proc = None
 
     def start(self, config_dict, common_config, need_log=False):
@@ -398,40 +430,16 @@ class GameLauncherRemote(GameLauncher):
             if d is not None and d.get("ip") is not None:
                 d["ip"] = self.aiserver_ip
         common_config["ip"] = self.aiserver_ip
-        self.gameover_sent=False
-        self.start_config = {"config_dict": config_dict, "common_config": common_config}
+
+        start_config = {"config_dict": config_dict, "common_config": common_config}
         self.config_modifier.update_config(config_dict, common_config)
         self.need_close = True
+        self._launch_remote_proc(start_config)
+        self.remote_gc_proc.remote_stop()
         self._launch_zmq_server()
-        self._launch_remote_proc(self.start_config)
+        self.remote_gc_proc.remote_start()
 
-    def close_game(self, keep_zmq=True,game_id=None):
-        # assert game_id is not None
-        # self.gameover_sent=True
-        # sgame_info = {}
-        # sgame_info["abs_name"] = "./1V1.abs"
-        # config_dict = self.start_config["config_dict"]
-        # common_config = self.start_config["common_config"]
-        # hero_conf = []
-        # for i in range(len(config_dict)):
-        #     hero_dict = {}
-        #     hero_dict["hero_id"] = ConfigModifier.HERO_DICT[config_dict[i]["hero"]]
-        #     if not config_dict[i]["use_common_ai"]:
-        #         hero_dict["request_info"] = {"ip": common_config["ip"], "port": config_dict[i]["port"],
-        #                                      "timeout": 20000}
-        #     hero_dict["summon_id"] = ConfigModifier.SKILL_DICT[config_dict[i]["skill"]]
-        #     hero_dict["symbol"] = ConfigModifier.SYMBOL[ConfigModifier.HERO_DICT[config_dict[i]["hero"]]]
-        #     hero_conf.append(hero_dict)
-        # sgame_info["hero_conf"] = hero_conf
-        # sgame_info["gameover"] = True
-        # sgame_info["game_id"]=game_id
-        # send_http_request(
-        #     self.launch_server,
-        #     "download",
-        #     self.user_token,
-        #     sgame_info,
-        #     download_path=None,
-        #     no_python=True)
+    def close_game(self, keep_zmq=True):
         self._close_remote_proc()
         if not keep_zmq:
             self._close_zmq_server()
@@ -439,7 +447,7 @@ class GameLauncherRemote(GameLauncher):
 
 # heal: 80102, sprint: 80109, punish: 80104|80116,
 # execute: 80108, rage: 80110, disrupt: 80105, daze: 80103
-# purity: 80107, weak: 80121, flash: 80115
+# purity: 80107, intimidate: 80121, flash: 80115
 
 
 class ConfigModifier:
@@ -467,14 +475,14 @@ class ConfigModifier:
     }
     SKILL_DICT = {
         "heal": 80102,
-        "rage": 80110,
+        "frenzy": 80110,
         "flash": 80115,
         "sprint": 80109,
         "execute": 80108,
         "disrupt": 80105,
-        "daze": 80103,
+        "stun": 80103,
         "purity": 80107,
-        "weak": 80121,
+        "intimidate": 80121,
     }
     SYMBOL = {
         141: "1514;1514;1514;1514;1514;1514;1514;1514;1514;1514;"
@@ -531,18 +539,18 @@ class ConfigModifier:
         199: "1510;1510;1510;1519;1519;1519;1519;1519;1519;1520;"
         "3514;3514;3514;3514;3514;3514;3514;3514;3514;3514;"
         "2520;2520;2520;2520;2520;2504;2504;2504;2504;2504",
-        513: "1514,1514,1514,1514,1514,1514,1514,1514,1514,1514,"
-        "3515,3515,3515,3515,3515,3515,3515,3515,3515,3515,"
-        "2520,2520,2520,2520,2520,2520,2520,2520,2520,2520",
-        518: "1504,1504,1504,1504,1504,1504,1504,1504,1504,1504,"
-        "3514,3514,3514,3514,3514,3514,3514,3514,3514,3514,"
-        "2520,2520,2520,2520,2520,2520,2520,2520,2520,2520",
-        502: "1504,1504,1504,1504,1504,1504,1504,1504,1504,1504,"
-        "3514,3514,3514,3514,3514,3514,3514,3514,3514,3514,"
-        "2517,2517,2517,2517,2517,2517,2517,2517,2517,2517",
-        510: "1504,1504,1504,1504,1504,1504,1504,1504,1504,1504,"
-        "3514,3514,3514,3514,3514,3514,3514,3514,3514,3514,"
-        "2517,2517,2517,2517,2517,2517,2517,2517,2517,2517",
+        513: "1514;1514;1514;1514;1514;1514;1514;1514;1514;1514;"
+        "3515;3515;3515;3515;3515;3515;3515;3515;3515;3515;"
+        "2520;2520;2520;2520;2520;2520;2520;2520;2520;2520",
+        518: "1504;1504;1504;1504;1504;1504;1504;1504;1504;1504;"
+        "3514;3514;3514;3514;3514;3514;3514;3514;3514;3514;"
+        "2520;2520;2520;2520;2520;2520;2520;2520;2520;2520",
+        502: "1504;1504;1504;1504;1504;1504;1504;1504;1504;1504;"
+        "3514;3514;3514;3514;3514;3514;3514;3514;3514;3514;"
+        "2517;2517;2517;2517;2517;2517;2517;2517;2517;2517",
+        510: "1504;1504;1504;1504;1504;1504;1504;1504;1504;1504;"
+        "3514;3514;3514;3514;3514;3514;3514;3514;3514;3514;"
+        "2517;2517;2517;2517;2517;2517;2517;2517;2517;2517",
     }
 
     def __init__(
@@ -567,6 +575,7 @@ class ConfigModifier:
 
     def load_config(self, config_path):
         print("load config...")
+
         config_path = os.path.join(config_path, "sgame_simulator.conf")
         assert os.path.exists(config_path), "default config {} not exist".format(
             config_path

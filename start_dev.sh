@@ -1,24 +1,21 @@
+export GC_MODE="remote"
+USE_GPU=true
+if [ $use_gpu ];then
+    USE_GPU=$use_gpu
+fi
+if [ $USE_GPU == false ] && [ `pip list |grep -c tensorflow ` -eq 2 ];then
+    cd /;
+    pip install tensorflow-1.14.0-cp36-cp36m-manylinux1_x86_64.whl
+fi
+
+
+rm -rf /code/logs
+mkdir -p /code/logs
+
 echo "---------------------------starting gpu-----------------------------"
-# create MODEL backup dir
-if [ ! -d "/model_bkup" ]; then
-    mkdir /model_bkup
-fi
-if [ ! -d "/logs/cpu_log" ]; then
-    mkdir -p /logs/cpu_log
-fi
-if [ ! -d "/logs/gpu_log" ]; then
-    mkdir -p /logs/gpu_log
-fi
-chmod -R +755 /code
-cd /code/gpu_code/script
+cd /code/code/gpu_code/script
+nohup sh start_gpu.sh >/code/logs/start_gpu.log 2>&1 &
 
-# start learner
-sh start_gpu.sh
-sleep 15s
 echo "---------------------------starting cpu-----------------------------"
-cd /code/cpu_code/script
-
-# start actor
-sh start_cpu.sh
-sleep 5s
-mkdir /code/logs
+cd /code/code/cpu_code/script
+nohup sh start_cpu.sh >/code/logs/start_cpu.log 2>&1 &

@@ -4,7 +4,7 @@ from setuptools import find_packages
 PROJECT_NAME = "rl-framework-learner"
 _VERSION = "1.0.0"
 
-require_list = ["tensorflow-gpu>=1.14.0"]
+require_list = []
 
 setup(
     name=PROJECT_NAME,

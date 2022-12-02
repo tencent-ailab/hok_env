@@ -40,63 +40,48 @@ def _generate_legal_action(env, states, common_ai):
 
 
 def test_send_action(env, common_ai=None, eval=False, config_dicts=None):
-    while True:
-        if config_dicts is None:
-            config_dicts = [{"hero": "diaochan", "skill": "rage"} for _ in range(2)]
-        print("======= test_send_action")
-        print("try to get first state...", common_ai)
-        obs, reward, done, state = env.reset(
-            use_common_ai=common_ai, eval=eval, config_dicts=config_dicts, render=None
-        )
-        if common_ai[0]:
-            print("first state: ", state[1].keys())
-        else:
-            print("first state: ", state[0].keys())
-        i = 0
-        print("first frame:", env.cur_frame_no)
+    if config_dicts is None:
+        config_dicts = [{"hero": "diaochan", "skill": "frenzy"} for _ in range(2)]
+    print("======= test_send_action")
+    print("try to get first state...", common_ai)
+    obs, reward, done, state = env.reset(
+        use_common_ai=common_ai, eval=eval, config_dicts=config_dicts, render=None
+    )
+    if common_ai[0]:
+        print("first state: ", state[1].keys())
+    else:
+        print("first state: ", state[0].keys())
+    i = 0
+    print("first frame:", env.cur_frame_no)
 
-        while True:
-            print("----------------------run step ", i)
-            actions = _generate_legal_action(env, state, common_ai)
-            obs, reward, done, state = env.step(actions)
-            if done[0] or done[1]:
-                break
-            i += 1
-            # if i > 10:
-            #     break
-        env.close_game()
-        print(state)
+    while True:
+        print("----------------------run step ", i)
+        actions = _generate_legal_action(env, state, common_ai)
+        obs, reward, done, state = env.step(actions)
+        if done[0] or done[1]:
+            break
+        i += 1
+        # if i > 10:
+        #     break
+    env.close_game()
+    print(state)
 
 
 if __name__ == "__main__":
     CONFIG_PATH = "config.dat"
-    GC_SERVER_ADDR = os.getenv('GAMECORE_SERVER_ADDR')#
+    GC_SERVER_ADDR = os.getenv("GAMECORE_SERVER_ADDR", "127.0.0.1:23432")
     # please replace the *ai_server_addr* with your ip address.
-    AI_SERVER_ADDR = os.getenv('AI_SERVER_ADDR')
-    assert (
-        AI_SERVER_ADDR is not None
-    ), "Set your IP address at environment variable AI_SERVER_ADDR."
-    if (
-        GC_SERVER_ADDR is None
-        or len(GC_SERVER_ADDR) == 0
-    ):
-        # local gc server
-        GC_SERVER_ADDR = "127.0.0.1:8011"
-        AI_SERVER_ADDR = "0.0.0.0"
-        remote_mode = 2
-    else:
-        # remote gc server
-        remote_mode = 2
-    # remote_mode = 2
+    AI_SERVER_ADDR = os.getenv("AI_SERVER_ADDR", "127.0.0.1")
+
+    # remote gc server
+    remote_mode = 2
+
     remote_param = {
         "remote_mode": remote_mode,
         "gc_server_addr": GC_SERVER_ADDR,
         "ai_server_addr": AI_SERVER_ADDR,
     }
-    print(GC_SERVER_ADDR,AI_SERVER_ADDR)
-    gc_mode = os.getenv("GC_MODE")
-    if gc_mode is not None and gc_mode == "local":
-        remote_param = None
+    print(GC_SERVER_ADDR, AI_SERVER_ADDR)
 
     env = HoK1v1.load_game(
         runtime_id=0,
@@ -104,7 +89,7 @@ if __name__ == "__main__":
         gamecore_path="./hok",
         config_path=CONFIG_PATH,
         eval_mode=False,
-        remote_param=None,
+        remote_param=remote_param,
     )
 
     # test all 18 heros
@@ -136,5 +121,5 @@ if __name__ == "__main__":
         env,
         common_ai=[False, False],
         eval=False,
-        config_dicts=[{"hero": "diaochan","skill":"rage"} for _ in range(2)],
+        config_dicts=[{"hero": "diaochan", "skill": "frenzy"} for _ in range(2)],
     )

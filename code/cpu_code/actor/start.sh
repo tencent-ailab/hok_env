@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 if [ $# -lt 1 ];then
     echo "usage $0 actor_num"
     exit
@@ -34,15 +33,12 @@ cpu_list=`cat /sys/fs/cgroup/cpuset/cpuset.cpus`
 cd code;
 let actor_num=$actor_num-1
 for i in $(seq 0 $actor_num); do
-    cpu_id=`python utils/get_cpu_id.py $cpu_list $i`
 #   use taskset to bind cpu
-#    taskset -c $cpu_id nohup python entry.py --actor_id=$i \
     nohup python entry.py --actor_id=$i \
                           --mem_pool_addr=$mem_pool_addr \
                           --model_pool_addr="localhost:10016" \
                           --thread_num=1 \
-                          --game_log_path "/logs/cpu_log/game_log" \
-                          >> /logs/cpu_log/actor_$i.log 2>&1 &
-#                          --agent_models="../freeze_model" \
+                          --game_log_path "/code/logs/game_log" \
+                          >> /code/logs/cpu_log/actor_$i.log 2>&1 &
 
 done;

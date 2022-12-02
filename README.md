@@ -52,6 +52,7 @@ To enable cluster training, a workaround by running Windows gamecore on Linux wi
 ### Download the hok gamecore 
 
 You need to apply for the license and gamecore on this page: https://aiarena.tencent.com/aiarena/en/open-gamecore
+
 Please put the `license.dat` under the folder:`hok_env_gamecore/gamecore/core_assets` and add the path of the folder `ai_simulator_remote` to the system environment variables.
 
 ![avatar](./docs/sgame_folder.png)

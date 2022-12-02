@@ -6,6 +6,7 @@ import os
 import traceback
 import time
 import logging
+import json
 
 from collections import deque
 import numpy as np
@@ -29,30 +30,6 @@ class Actor:
         save sample in sample manager
     """
 
-    ALL_CONFIG_DICT = {
-        "luban": [{"hero": "luban", "skill": "rage"} for _ in range(2)],
-        "miyue": [{"hero": "miyue", "skill": "rage"} for _ in range(2)],
-        "lvbu": [{"hero": "lvbu", "skill": "flash"} for _ in range(2)],
-        "libai": [{"hero": "libai", "skill": "flash"} for _ in range(2)],
-        "makeboluo": [{"hero": "makeboluo", "skill": "daze"} for _ in range(2)],
-        "direnjie": [{"hero": "direnjie", "skill": "rage"} for _ in range(2)],
-        "guanyu": [{"hero": "guanyu", "skill": "sprint"} for _ in range(2)],
-        "diaochan": [{"hero": "diaochan", "skill": "purity"} for _ in range(2)],
-        "luna": [{"hero": "luna", "skill": "weak"} for _ in range(2)],
-        "hanxin": [{"hero": "hanxin", "skill": "flash"} for _ in range(2)],
-        "huamulan": [{"hero": "huamulan", "skill": "flash"} for _ in range(2)],
-        "buzhihuowu": [{"hero": "buzhihuowu", "skill": "execute"} for _ in range(2)],
-        "jvyoujing": [{"hero": "jvyoujing", "skill": "flash"} for _ in range(2)],
-        "houyi": [{"hero": "houyi", "skill": "rage"} for _ in range(2)],
-        "zhongkui": [{"hero": "zhongkui", "skill": "daze"} for _ in range(2)],
-        "ganjiangmoye": [{"hero": "ganjiangmoye", "skill": "flash"} for _ in range(2)],
-        "kai": [{"hero": "kai", "skill": "weak"} for _ in range(2)],
-        "gongsunli": [{"hero": "gongsunli", "skill": "rage"} for _ in range(2)],
-        "peiqinhu": [{"hero": "peiqinhu", "skill": "flash"} for _ in range(2)],
-        "shangguanwaner": [
-            {"hero": "shangguanwaner", "skill": "heal"} for _ in range(2)
-        ],
-    }
     HERO_DICT = {
         "luban": 112,
         "miyue": 121,
@@ -77,7 +54,7 @@ class Actor:
     }
 
     # def __init__(self, id, type):
-    def __init__(self, id, agents, max_episode: int = 0, env=None):
+    def __init__(self, id, agents, max_episode: int = 0, env=None,gpu_ip="127.0.0.1"):
         self.m_config_id = id
         self.m_task_uuid = Config.TASK_UUID
         self.m_episode_info = deque(maxlen=100)
@@ -93,7 +70,7 @@ class Actor:
         self.agents = agents
         self.monitor_logger = logging.getLogger("monitor")
         self.monitor_logger.setLevel(logging.INFO)
-        monitor_handler = InfluxdbMonitorHandler("127.0.0.1")
+        monitor_handler = InfluxdbMonitorHandler(gpu_ip)
         monitor_handler.setLevel(logging.INFO)
         self.monitor_logger.addHandler(monitor_handler)
         self.render = None
@@ -397,9 +374,6 @@ class Actor:
         self._last_print_time = time.time()
         self._episode_num = 0
 
-        # SKILL_DICT = {"heal": 80102, "rage": 80110, "flash": 80115, "sprint": 80109,
-        #               "execute": 80108, "disrupt": 80105, "daze": 80103, "purity": 80107,
-        #               "weak": 80121}
         if eval_mode:
             if load_models is None:
                 raise "load_models is None! "
@@ -410,15 +384,30 @@ class Actor:
             swap = False
 
         last_clean = time.time()
+
+        # support multi heroes
+        with open('hero_config.json', 'r') as hero_file:
+            hero_data = json.load(hero_file)
+
+        # heroes' names
+        heroes = list(hero_data.keys())
+        camp1_index = 0
+        camp2_index = 0
+        # 英雄池大小
+        hero_num = len(hero_data)
         while True:
-            # hero_name_1 = os.getenv("hero_name_1")
-            hero_name_1 = "luna"
-            # hero_name_2 = os.getenv("hero_name_2")
-            hero_name_2 = "luna"
+            hero_name1 = heroes[camp1_index]
+            hero_name2 = heroes[camp2_index]
             config_dicts = [
-                dict(self.ALL_CONFIG_DICT[hero_name_1][0]),
-                dict(self.ALL_CONFIG_DICT[hero_name_2][0]),
+                {"hero":hero_name1, "skill": hero_data[hero_name1]},
+                {"hero":hero_name2, "skill": hero_data[hero_name2]},
             ]
+
+            camp1_index += 1
+            if camp1_index % hero_num == 0:
+                camp1_index = 0
+                camp2_index = (camp2_index + 1) % hero_num
+            
             print(config_dicts)
             try:
                 # provide a init eval value at the first episode

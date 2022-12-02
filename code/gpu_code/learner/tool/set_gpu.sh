@@ -91,15 +91,15 @@ echo gpu_list, $gpu_list
 echo Nodelist, $node_list
 
 if [[ $use_socket == 1 ]];then
-   sed -i 's/network_dataset_dataop/network_dataset_socket_async/g' /code/gpu_code/learner/code/train.py 
+   sed -i 's/network_dataset_dataop/network_dataset_socket_async/g' /code/code/gpu_code/learner/code/train.py
 fi
 
 if [[ $use_zmq == 1 ]];then
-   sed -i 's/network_dataset_dataop/network_dataset_zmq_dataset/g' /code/gpu_code/learner/code/train.py 
+   sed -i 's/network_dataset_dataop/network_dataset_zmq_dataset/g' /code/code/gpu_code/learner/code/train.py
 fi
 
-sed -i "s/ips =.*/ips = ${ips}/g" /code/gpu_code/learner/code/common.conf
-sed -i "s/training_type =.*/training_type = $training_type/g" /code/gpu_code/learner/code/common.conf
+sed -i "s/ips =.*/ips = ${ips}/g" /code/code/gpu_code/learner/code/common.conf
+sed -i "s/training_type =.*/training_type = $training_type/g" /code/code/gpu_code/learner/code/common.conf
 
 if [ "${training_type}"x == "${type1}"x ]
 then
@@ -110,7 +110,7 @@ then
         mem_pool_list=$mem_pool_list','$mem_pool_port
     done
     mem_pool_list=${mem_pool_list}']'
-    sed -i "s/ports =.*/ports = ${mem_pool_list}/g"  /code/gpu_code/learner/code/common.conf
+    sed -i "s/ports =.*/ports = ${mem_pool_list}/g"  /code/code/gpu_code/learner/code/common.conf
     #send model cpu_iplist
     rm /framework/send_model/mcp_opporation_tools/current.iplist
     count=0
@@ -126,6 +126,6 @@ then
     done <$cpu_iplist
     wait
 fi
-sed -i "s/Num_process=.*/Num_process=$gpu_num/g" /code/gpu_code/learner/code/run_multi.sh
-sed -i "s/Nodelist=.*/Nodelist=$node_list/g" /code/gpu_code/learner/code/run_multi.sh
+sed -i "s/Num_process=.*/Num_process=$gpu_num/g" /code/code/gpu_code/learner/code/run_multi.sh
+sed -i "s/Nodelist=.*/Nodelist=$node_list/g" /code/code/gpu_code/learner/code/run_multi.sh
 

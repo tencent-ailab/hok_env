@@ -2,7 +2,7 @@ import os
 import sys
 
 os.environ["dataop"] = os.getcwd() + "/code/shm_lib/"
-sys.path.append("/code/common/")
+sys.path.append("/code/code/common/")
 from algorithm import Algorithm
 from networkmodel.offline_rlinfo_adapter import OfflineRlInfoAdapter
 

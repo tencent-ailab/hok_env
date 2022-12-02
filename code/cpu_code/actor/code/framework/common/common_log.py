@@ -42,7 +42,7 @@ class CommonLogger:
         )
 
         # set file handler: file rotates with time
-        filename = "/logs/cpu_log/info_%d.log" % int(actor_id)
+        filename = "/code/logs/cpu_log/info_%d.log" % int(actor_id)
         rf_handler = logging.handlers.TimedRotatingFileHandler(
             filename=filename, when="H", interval=3, backupCount=1
         )

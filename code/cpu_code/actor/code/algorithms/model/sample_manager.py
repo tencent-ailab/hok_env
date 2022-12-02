@@ -192,7 +192,6 @@ class SampleManager:
                 if cnt == 0:
                     # lstm cell & hidden
                     first_frame_no = rl_info.frame_no
-                    sample_lstm = rl_info.lstm_info
 
                 # serilize one frames
                 idx, dlen = 0, 0
@@ -246,6 +245,7 @@ class SampleManager:
                     # sample = np.zeros([np.sum(self._data_shapes)])
                     sample = self._reshape_lstm_batch_sample(sample_batch, sample_lstm)
                     self.m_replay_buffer[i].append((first_frame_no, sample))
+                    sample_lstm = rl_info.lstm_info
 
     def _clip_reward(self, reward, max=100, min=-100):
         if reward > max:

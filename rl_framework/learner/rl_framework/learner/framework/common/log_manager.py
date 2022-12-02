@@ -24,11 +24,11 @@ class LogManager(object):
         )
 
         # set file handler: file rotates with time
-        if not os.path.exists("/logs/gpu_log/"):
+        if not os.path.exists("/code/logs/gpu_log/"):
             # os.makedirs('./log')
-            os.system("mkdir /logs/gpu_log/")
+            os.system("mkdir /code/logs/gpu_log/")
         rf_handler = logging.handlers.TimedRotatingFileHandler(
-            filename="/logs/gpu_log/train.log", when="H", interval=12, backupCount=1
+            filename="/code/logs/gpu_log/train.log", when="H", interval=12, backupCount=1
         )
         rf_handler.setLevel(logging.DEBUG)
         rf_handler.setFormatter(formatter)
@@ -47,7 +47,7 @@ class LogManager(object):
 
         logger.addHandler(rf_handler)
         logger.addHandler(console)
-        loss_file_path = "/logs/gpu_log/loss.txt"
+        loss_file_path = "/code/logs/gpu_log/loss.txt"
         self.loss_writer = open(loss_file_path, "wt")
         self.total_noise_scale = 0.0
 
