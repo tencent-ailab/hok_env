@@ -1,7 +1,7 @@
 # Honor of Kings AI Open Environment of Tencent(腾讯王者荣耀AI开放环境)
 ![avatar](./docs/hok_1v1.png)
 ## Introduction
-![image workflow](https://github.com/tencent-ailab/hok_env/actions/workflows/docker-image.yml/badge.svg)
+[![Docker Image CI](https://github.com/tencent-ailab/hok_env/actions/workflows/docker-image.yml/badge.svg)](https://github.com/tencent-ailab/hok_env/actions/workflows/docker-image.yml)
 
 - [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of the MOBA game: [Honor of kings 1V1](https://pvp.qq.com/). 
 - This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.

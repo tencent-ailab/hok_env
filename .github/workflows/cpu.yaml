@@ -1,4 +1,4 @@
-name: gpu
+name: cpu
 on:
   push:
     branches:
@@ -29,10 +29,10 @@ jobs:
             tencentailab/hok_env
           # generate Docker tags based on the following events/attributes
           flavor: |
-            prefix=baseline_1v1_dev_
+            prefix=baseline_1v1_cpu_
           tags: |
             type=semver,pattern={{raw}}
-            type=sha,prefix=baseline_1v1_dev_
+            type=sha,prefix=baseline_1v1_cpu_
       -
         name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -48,6 +48,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          file: dockerfile.dev
-          cache-from: type=registry,ref=tencentailab/hok_env:buildcache
-          cache-to: type=registry,ref=tencentailab/hok_env:buildcache,mode=max
+          file: dockerfile.cpu
+          cache-from: type=registry,ref=tencentailab/hok_env:buildcache-cpu
+          cache-to: type=registry,ref=tencentailab/hok_env:buildcache-cpu,mode=max
