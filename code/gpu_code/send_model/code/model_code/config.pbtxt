@@ -1,8 +1,0 @@
-max_batch_size: 256
-platform: "tensorflow_savedmodel"
-input:
-[{name: "feature:0", data_type: TYPE_FP32, dims: [ 4]}, {name: "legal_action:0", data_type: TYPE_FP32, dims: [ 9]}]
-output:
-[{name: "Reshape_1:0", data_type: TYPE_INT64, dims: [1], reshape: { shape: [ ] }}, {name: "model/strided_slice:0", data_type: TYPE_FP32, dims: [1], reshape: { shape: [ ] }}, {name: "sample_action_neg_log_pi_old/Reshape_2:0", data_type: TYPE_FP32, dims: [1], reshape: { shape: [ ] }}, {name: "model/policy_result_after_mask:0", data_type: TYPE_FP32, dims: [ 9]}]
-dynamic_batching {}
-instance_group [ { count: 2 }]

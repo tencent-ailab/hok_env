@@ -33,10 +33,10 @@ RUN mv /usr/bin/python /usr/bin/python2 && ln -s /usr/bin/python3 /usr/bin/pytho
 
 # pip3 dep
 RUN pip3 install --no-cache-dir --upgrade \
-                    opencv-python==4.1.0.25 \
-                    gevent==20.9.0 \
-                    --index-url=https://mirrors.tencent.com/repository/pypi/tencent_pypi/simple \
-                    --extra-index-url=https://mirrors.tencent.com/pypi/simple
+    opencv-python==4.1.0.25 \
+    gevent==20.9.0 \
+    --index-url=https://mirrors.tencent.com/repository/pypi/tencent_pypi/simple \
+    --extra-index-url=https://mirrors.tencent.com/pypi/simple
 
 # hok_env
 COPY hok_env /hok_env

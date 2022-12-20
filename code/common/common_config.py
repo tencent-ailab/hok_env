@@ -73,7 +73,7 @@ class ModelConfig:
     TASK_ID = 15428
     TASK_UUID = "a2dbb49f-8a67-4bd4-9dc5-69e78422e72e"
 
-    BATCH_SIZE = 64
+    BATCH_SIZE = 512
     TARGET_EMBED_DIM = 32
 
     data_keys = (
@@ -122,7 +122,7 @@ class ModelConfig:
 
 
 class Config:
-    slow_time = 0.4
+    slow_time = 0.0
     TRAIN_MODE = 0
     EVAL_MODE = 1
     BATTLE_MODE = 2
