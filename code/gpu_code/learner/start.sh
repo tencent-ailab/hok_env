@@ -1,7 +1,6 @@
 #!/bin/bash
 #this starts rl learner for training
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/code/code/gpu_code/learner/code/shm_lib"
-export SLOW_TIME=0.03
 mount -o size=200M -o nr_inodes=1000000 -o noatime,nodiratime -o remount /dev/shm
 
 if [ $# -lt 2 ];then

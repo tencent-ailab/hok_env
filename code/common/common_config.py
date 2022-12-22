@@ -122,7 +122,6 @@ class ModelConfig:
 
 
 class Config:
-    slow_time = 0.0
     TRAIN_MODE = 0
     EVAL_MODE = 1
     BATTLE_MODE = 2
@@ -175,5 +174,4 @@ class Config:
             ENEMY_TYPE = "network"
     ENV_RULE = "none"
     EVAL_FREQ = 5
-    # if os.getenv("SLOW_TIME") is not None:
-    #     slow_time = float(os.getenv("SLOW_TIME").strip())
+    slow_time = float(os.getenv("SLOW_TIME", "0").strip())

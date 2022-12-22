@@ -36,7 +36,7 @@ function start() {
   nohup bash start.sh $training_type $game_name $IS_CHIEF_NODE > /code/logs/gpu_log/start.log 2>&1 &
   log "start rl learner"
 
-  nohup influxdb_exporter --web.listen-address=":8086"  --udp.bind-address=":8086" > /dev/null 2>&1 &
+  cd /code/code/gpu_code/script/ && sh start_monitor.sh
   log "start monitor"
 }
 
