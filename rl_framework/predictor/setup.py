@@ -4,9 +4,9 @@ from setuptools import find_packages
 PROJECT_NAME = "rl-framework-predictor"
 _VERSION = "1.0.0"
 
-require_list = ["gevent==20.9.0", "requests"]
-cpu_list = ["tensorflow==1.14.0"]
-gpu_list = ["tensorflow-gpu>=1.14.0"]
+require_list = []
+cpu_list = []
+gpu_list = []
 
 setup(
     name=PROJECT_NAME,

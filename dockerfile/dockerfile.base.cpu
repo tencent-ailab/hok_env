@@ -1,0 +1,8 @@
+# py3.7 + cpu
+ARG BASE_IMAGE=common_base_py37
+FROM ${BASE_IMAGE} as cpu
+
+# tensorflow
+ARG TENSORFLOW_VERSION=1.15.5
+RUN pip3 install --no-cache-dir protobuf~=3.20 tensorflow==${TENSORFLOW_VERSION}
+RUN pip3 install --no-cache-dir torch

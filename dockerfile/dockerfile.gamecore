@@ -1,0 +1,32 @@
+ARG BASE_IMAGE=cpu_base
+
+FROM ${BASE_IMAGE} as gamecore
+
+RUN apt update && \
+    apt install -y unzip && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./hok_env.zip ./
+
+RUN mkdir -p =/rl_framework && \
+    unzip ./hok_env.zip -d /rl_framework
+
+FROM ${BASE_IMAGE}
+
+RUN dpkg --add-architecture i386
+
+COPY ./3rd/winehq.key /usr/share/keyrings/winehq-archive.key
+
+RUN echo "deb [arch=amd64,i386 signed-by=/usr/share/keyrings/winehq-archive.key] https://mirrors.tuna.tsinghua.edu.cn/wine-builds/ubuntu/ focal main" >> /etc/apt/sources.list.d/winehq.list
+
+RUN apt update && \
+    apt install --install-recommends -y winehq-stable && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY ./code/remote-gc-server /rl_framework/remote-gc-server
+
+COPY --from=gamecore /rl_framework/gamecore/ /rl_framework/gamecore/
+COPY ./license.dat /rl_framework/gamecore/core_assets/
+
+ENV GAMECORE_PATH=/rl_framework/gamecore
+ENV WINEDEBUG=-all

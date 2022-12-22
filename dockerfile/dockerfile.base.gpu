@@ -1,0 +1,71 @@
+ARG BASE_IMAGE=common_base_py38
+ARG BUILD_PYTHON_IMAGE=build_python_py38
+ARG NV_TENSORFLOW_VERSION=1.15.5+nv22.8
+
+FROM ${BUILD_PYTHON_IMAGE} as build_python
+
+FROM nvidia/cuda:11.6.2-devel-ubuntu20.04 as build_horovod
+
+RUN apt update && \
+    apt install -y wget && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN wget -O /etc/apt/sources.list https://mirrors.tencent.com/repo/ubuntu20_sources.list
+
+ARG NV_TENSORFLOW_VERSION
+
+COPY --from=build_python /python/ /
+
+# python
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONIOENCODING=UTF-8 LANG=C.UTF-8
+RUN python3 -m ensurepip --altinstall --upgrade && \
+    python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+RUN pip3 install --no-cache-dir nvidia-pyindex
+RUN pip3 install --no-cache-dir nvidia-tensorflow==${NV_TENSORFLOW_VERSION}
+RUN pip3 install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cu116
+
+# tzdata
+RUN apt update && \
+    echo -e  "tzdata tzdata/Areas select Asia\ntzdata tzdata/Zones/Asia select Chongqing" | debconf-set-selections && \
+    DEBCONF_NONINTERACTIVE_SEEN=true DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+
+# openmpi
+RUN apt update && \
+    apt install -y libopenmpi-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir cloudpickle psutil pyyaml cffi pycparser numpy~=1.23.0
+RUN export HOROVOD_NCCL_INCLUDE=$(python3 -c "import os; import nvidia.nccl.include; print(os.path.dirname(nvidia.nccl.include.__file__))") && \
+    export HOROVOD_NCCL_LIB=$(python3 -c "import os; import nvidia.nccl.lib; print(os.path.dirname(nvidia.nccl.lib.__file__))") && \
+    MPI_HOME=/usr/local/ HOROVOD_WITH_MPI=1 HOROVOD_NCCL_LINK=SHARED HOROVOD_GPU_OPERATIONS=NCCL HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_TENSORFLOW=1 pip3 install horovod==0.25.0 -i https://mirrors.tencent.com/pypi/simple/
+
+# py3.8 + gpu + nv-tf 1.15.5+nv22.8
+FROM ${BASE_IMAGE} as gpu
+
+ARG NV_TENSORFLOW_VERSION
+
+# nvidia-tensorflow
+RUN pip3 install --no-cache-dir nvidia-pyindex
+RUN pip3 install --no-cache-dir nvidia-dali-cuda110==1.16.0
+RUN pip3 install --no-cache-dir nvidia-cublas-cu11~=11.10
+RUN pip3 install --no-cache-dir nvidia-cusolver-cu11~=11.4
+RUN pip3 install --no-cache-dir nvidia-cuda-nvcc-cu11~=11.7
+RUN pip3 install --no-cache-dir nvidia-nccl-cu11~=2.12
+RUN pip3 install --no-cache-dir nvidia-curand-cu11~=10.2
+RUN pip3 install --no-cache-dir nvidia-cufft-cu11~=10.7
+RUN pip3 install --no-cache-dir nvidia-cudnn-cu11~=8.5
+RUN pip3 install --no-cache-dir nvidia-cusparse-cu11~=11.7
+RUN pip3 install --no-cache-dir nvidia-tensorflow==${NV_TENSORFLOW_VERSION}
+
+# pytorch
+RUN pip3 install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cu116
+
+# horovod
+RUN pip3 install --no-cache-dir cloudpickle psutil pyyaml cffi pycparser numpy~=1.23.0
+COPY --from=build_horovod /usr/lib/python3.8/site-packages/horovod /usr/lib/python3.8/site-packages/horovod
+COPY --from=build_horovod /usr/lib/python3.8/site-packages/horovod-0.25.0.dist-info /usr/lib/python3.8/site-packages/horovod-0.25.0.dist-info
+COPY --from=build_horovod /usr/bin/horovodrun /usr/bin/horovodrun
+
+RUN echo $(python3 -c "import os; import nvidia.nccl.lib; print(os.path.dirname(nvidia.nccl.lib.__file__))") > /etc/ld.so.conf.d/nccl.conf && ldconfig
+

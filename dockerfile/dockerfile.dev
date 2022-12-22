@@ -1,0 +1,46 @@
+ARG BASE_IMAGE=cpu_bse
+
+FROM ${BASE_IMAGE} 
+
+RUN sed -i "s/;http_port =.*/http_port = 8081/g" /etc/grafana/grafana.ini
+
+# pip3 dep
+# RUN pip3 install --no-cache-dir --upgrade \
+#     opencv-python==4.1.0.25 \
+#     gevent==20.9.0 \
+#     --index-url=https://mirrors.tencent.com/repository/pypi/tencent_pypi/simple \
+#     --extra-index-url=https://mirrors.tencent.com/pypi/simple
+
+# hok_env
+COPY hok_env /hok_env
+RUN pip3 install --no-cache-dir -e /hok_env
+
+# rl_framework
+COPY ./rl_framework/ /rl_framework/
+
+RUN cd /rl_framework/common && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python3 setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/learner && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python3 setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/mem_pool && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python3 setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/model_pool && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python3 setup.py clean --all && rm -rf dist/
+RUN cd /rl_framework/predictor && python3 setup.py bdist_wheel && pip3 install --no-cache-dir dist/*.whl && python3 setup.py clean --all && rm -rf dist/
+
+RUN pip3 install --no-cache-dir --upgrade build && \
+    cd /rl_framework/monitor && python3 -m build && \
+    pip3 install --no-cache-dir dist/*.whl && rm -rf dist/
+
+COPY ./rl_framework/model_pool/pkg/model_pool_pkg/ /code/framework/model_pool/
+
+# training code
+COPY ./code /code/code
+COPY ./code/cpu_code/script/sgame_simulator.conf /root/.hok/sgame_simulator.conf
+COPY ./start_dev.sh /start_dev.sh
+
+# monitor config
+COPY code/common/monitor/dashboard/*.json /var/lib/grafana/dashboards/
+COPY code/common/monitor/config/datasource.yaml /etc/grafana/provisioning/datasources/
+COPY code/common/monitor/config/dashboard.yaml /etc/grafana/provisioning/dashboards/
+
+WORKDIR /
+
+ENV GAMECORE_SERVER_BIND_ADDR=:23432
+ENV GAMECORE_SERVER_ADDR="127.0.0.1:23432"
