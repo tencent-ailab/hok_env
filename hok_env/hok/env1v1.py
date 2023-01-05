@@ -17,6 +17,7 @@ class ResponceType(Enum):
     CACHED = 2
     GAMEOVER = 3
 
+
 import numpy as np
 import hok.lib.interface as interface
 
@@ -94,7 +95,6 @@ class HoK1v1:
         print("load config.dat: ", __file__)
         self.lib_proccessor.Init(config_path)
         self.is_gameover = True
-        self.gameover_sent = True
 
         self.action_size = self.LABEL_SIZE_LIST
 
@@ -121,7 +121,6 @@ class HoK1v1:
         self.request_latency = 1
         self.render = render
 
-        self.error_flag = False
         self._act_que = []
         self.start_frame = -1
 
@@ -166,6 +165,7 @@ class HoK1v1:
             "kill_z",
             "target",
         ]
+        self.wait_game_max_timeout = 30
 
     # util_functions
     def get_random_action(self, info):
@@ -307,7 +307,7 @@ class HoK1v1:
             if not self.need_predict(i):
                 continue
             obs[i] = states[i]["observation"]
-            temp_reward = states[i]['reward'][:6] + states[i]['reward'][7:]
+            temp_reward = states[i]["reward"][:6] + states[i]["reward"][7:]
             reward[i] = temp_reward
             done[i] = states[i]["done"]
 
@@ -574,7 +574,6 @@ class HoK1v1:
                     # directly receive msg again!
                     assert False, "Parsing gameover information, receive msg again!"
                     # LOG.error("Parsing gameover information, receive msg again!")
-                    pass
                 elif ret[0] == 2:
                     # SEND_CCD_ONE_HERO, get normal feature vector, break
                     state = self._state_tuple2np(ret[1:])[0]
@@ -591,9 +590,6 @@ class HoK1v1:
                     s_msgs[id] = None
                     # return states, req_pb
                 elif ret[0] == 3 or ret[0] == 4 or ret[0] == 5:
-                    if self.cur_frame_no > 350:
-                        print("too much init move!")
-                        self.error_flag = True
                     # SEND_CCD_FIVE_HERO
                     self.repeat_init[id] = 0
                     if ret[0] == 3:
@@ -641,7 +637,10 @@ class HoK1v1:
 
                 self._gameover(i, True)
 
-        self.gameover_sent = False
+        # wait game over
+        self.game_launcher.wait_game(self.wait_game_max_timeout)
+
+        # force close
         self.game_launcher.close_game(keep_zmq=True)
 
     def reset(
@@ -693,7 +692,6 @@ class HoK1v1:
         self.game_id = game_id
         common_config["game_id"] = self.game_id
         self.is_gameover = False
-        self.gameover_sent = False
 
         self.player_masks = use_common_ai.copy()
 
@@ -718,6 +716,7 @@ class HoK1v1:
         self._act_que = [queue.Queue() for _ in range(self.PLAYER_NUM)]
 
         states, req_pbs = self._step_feature(True)
+        self._update_gameover(states, req_pbs)
 
         # return state, req_pb
         self.cur_state = states
@@ -758,8 +757,4 @@ class HoK1v1:
         return response
 
     def _gameover(self, id, force_send=False):
-        if self.gameover_sent and not force_send:
-            return
-        self.gameover_sent = True
-
         self._send((ResponceType.GAMEOVER, -1), id)

@@ -12,7 +12,7 @@ build_python_py38=build_python_py38
 
 # common_base image for py37/py38
 docker build -f ./dockerfile/dockerfile.base -t ${common_base_py38} --build-arg=PYTHON_VERSION=3.8.16 .
-docker build -f ./dockerfile/dockerfile.base -t ${build_python_py38} --build-arg=PYTHON_VERSION=3.8.16  --target build_python .
+docker build -f ./dockerfile/dockerfile.base -t ${build_python_py38} --build-arg=PYTHON_VERSION=3.8.16 --target build_python .
 docker build -f ./dockerfile/dockerfile.base -t ${common_base_py37} --build-arg=PYTHON_VERSION=3.7.16 .
 
 # py37 for cpu, py38 for gpu

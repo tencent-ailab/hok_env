@@ -6,10 +6,10 @@ RUN apt update && \
     apt install -y unzip && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./hok_env.zip ./
+COPY ./hok_env_gamecore.zip ./
 
 RUN mkdir -p =/rl_framework && \
-    unzip ./hok_env.zip -d /rl_framework
+    unzip ./hok_env_gamecore.zip -d /rl_framework
 
 FROM ${BASE_IMAGE}
 
@@ -27,6 +27,8 @@ COPY ./code/remote-gc-server /rl_framework/remote-gc-server
 
 COPY --from=gamecore /rl_framework/gamecore/ /rl_framework/gamecore/
 COPY ./license.dat /rl_framework/gamecore/core_assets/
+
+RUN chmod a+x /rl_framework/gamecore/* /rl_framework/gamecore/bin/*
 
 ENV GAMECORE_PATH=/rl_framework/gamecore
 ENV WINEDEBUG=-all

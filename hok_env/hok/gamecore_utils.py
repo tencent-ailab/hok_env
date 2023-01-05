@@ -163,23 +163,31 @@ class GameLauncher:
 
                 num_retry = 5
                 for j in range(num_retry):
+                    zmq_server = None
                     try:
                         zmq_server = self.lib_processor.server_manager.Add(addr)
                         if not zmq_server:
                             raise Exception("Address already exists: {}".format(addr))
                         rc = zmq_server.Reset(addr)
                         if rc < 0:
-                            raise Exception("zmq_server.Reset failed")
+                            raise Exception("zmq_server.Reset failed: %s" % rc)
                         self.server[i] = zmq_server
                         self.addrs[i] = addr
                         break
-                    except socket.error:
+                    except Exception as e:
                         print(
                             "[error] socket bind error, wait 1 sec and try {}/{}".format(
                                 j + 1, num_retry
                             )
                         )
                         traceback.print_exc()
+                        if zmq_server:
+                            zmq_server.Close()
+
+                        self.lib_processor.server_manager.Delete(addr)
+                        self.server[i] = None
+                        self.addrs[i] = None
+
                         time.sleep(1)
 
     def start(self, config_dict, common_config):
@@ -292,6 +300,15 @@ class RemoteGameProc:
         self.launch_server = launch_server
         self.start_config = start_config
         self.log_path = log_path
+
+    def remote_exists(self):
+        data = {
+            "runtime_id": self.runtime_id,
+        }
+        ret = send_http_request(self.launch_server, "exists", self.user_token, data)
+        if ret.get("exists"):
+            return True
+        return False
 
     def remote_stop(self):
         data = {
@@ -419,6 +436,18 @@ class GameLauncherRemote(GameLauncher):
         if hasattr(self, "remote_gc_proc") and self.remote_gc_proc is not None:
             del self.remote_gc_proc
             self.remote_gc_proc = None
+
+    def wait_game(self, max_timeout_second=30):
+        start_time = time.time()
+        while (
+            max_timeout_second <= 0
+        ) or time.time() - start_time <= max_timeout_second:
+            try:
+                if not self.remote_gc_proc.remote_exists():
+                    break
+            except Exception:
+                LOG.exception("wait_game failed, continue")
+            time.sleep(1)
 
     def start(self, config_dict, common_config, need_log=False):
         # "curl -k https://127.0.0.1:23333/v1/newGame -d '{"Token": "123", "CustomConfig": "xxxxx"}'"
