@@ -91,9 +91,9 @@ class HoK1v1:
             None,
         ] * self.PLAYER_NUM
 
-        self.lib_proccessor = interface.Interface()
+        self.lib_processor = interface.Interface()
         print("load config.dat: ", __file__)
-        self.lib_proccessor.Init(config_path)
+        self.lib_processor.Init(config_path)
         self.is_gameover = True
 
         self.action_size = self.LABEL_SIZE_LIST
@@ -129,7 +129,7 @@ class HoK1v1:
                 runtime_id,
                 game_log_path,
                 gamecore_path,
-                lib_processor=self.lib_proccessor,
+                lib_processor=self.lib_processor,
             )
         else:
             self.game_launcher = GameLauncherRemote(
@@ -139,7 +139,7 @@ class HoK1v1:
                 local_server=(remote_param["remote_mode"] == 1),
                 launch_server=remote_param["gc_server_addr"],
                 aiserver_ip=remote_param["ai_server_addr"],
-                lib_processor=self.lib_proccessor,
+                lib_processor=self.lib_processor,
             )
             # print(runtime_id, game_log_path, gamecore_path)
 
@@ -441,7 +441,7 @@ class HoK1v1:
                 # silently skip if is common ai
                 continue
 
-            ret_code, resp_id = self.lib_proccessor.ResultProcess(
+            ret_code, resp_id = self.lib_processor.ResultProcess(
                 rp_actions[id : id + 1], self.cur_sgame_ids[id]
             )
 
@@ -486,7 +486,7 @@ class HoK1v1:
                 parse_ret.append(None)
                 continue
             # import pdb;pdb.set_trace();
-            parse_state, sgame_id = self.lib_proccessor.RecvAIFrameState(
+            parse_state, sgame_id = self.lib_processor.RecvAIFrameState(
                 self.game_launcher.addrs[id]
             )
             self.cur_sgame_ids[id] = sgame_id
@@ -498,7 +498,7 @@ class HoK1v1:
 
             req_pb = None
             if parse_state == interface.PARSE_CONTINUE:
-                req_pb = self.lib_proccessor.GetAIFrameState(sgame_id)
+                req_pb = self.lib_processor.GetAIFrameState(sgame_id)
                 assert req_pb is not None, "GetAIFrameState failed"
 
             if self._act_que[id].empty():
@@ -565,7 +565,7 @@ class HoK1v1:
                         continue
 
                 parse_state, sgame_id = r_msgs[id]
-                ret = self.lib_proccessor.FeatureProcess(parse_state, sgame_id)
+                ret = self.lib_processor.FeatureProcess(parse_state, sgame_id)
                 # Failed, return no action
                 if ret[0] == 0:
                     # LOG.error("step failed: {}".format(ret[1]))
@@ -626,12 +626,12 @@ class HoK1v1:
                 if not self.need_predict(i):
                     continue
 
-                parse_state, sgame_id = self.lib_proccessor.RecvAIFrameState(
+                parse_state, sgame_id = self.lib_processor.RecvAIFrameState(
                     self.game_launcher.addrs[i]
                 )
                 if parse_state != interface.PARSE_CONTINUE:
                     continue
-                req_pb = self.lib_proccessor.GetAIFrameState(sgame_id)
+                req_pb = self.lib_processor.GetAIFrameState(sgame_id)
                 if req_pb.gameover:
                     self.is_gameover = True
 
@@ -677,7 +677,7 @@ class HoK1v1:
             for sgame_id in self.cur_sgame_ids:
                 if sgame_id:
                     sgame_ids.append(sgame_id)
-        self.lib_proccessor.Reset(self.eval_mode, sgame_ids)
+        self.lib_processor.Reset(self.eval_mode, sgame_ids)
 
         self.last_predict_frame = 0
         self.player_ids = {}
@@ -727,17 +727,17 @@ class HoK1v1:
         send_type, msg_id = msg
         ret = None
         if send_type == ResponceType.GAMEOVER:
-            ret = self.lib_proccessor.SendGameoverResp(
+            ret = self.lib_processor.SendGameoverResp(
                 self.game_launcher.addrs[id], self.cur_sgame_ids[id]
             )
         elif send_type == ResponceType.DEFAULT:
-            ret = self.lib_proccessor.SendDefaultResp(self.game_launcher.addrs[id])
+            ret = self.lib_processor.SendDefaultResp(self.game_launcher.addrs[id])
         elif send_type == ResponceType.NONE:
-            ret = self.lib_proccessor.SendNoneResp(
+            ret = self.lib_processor.SendNoneResp(
                 self.game_launcher.addrs[id], self.cur_sgame_ids[id]
             )
         elif send_type == ResponceType.CACHED:
-            ret = self.lib_proccessor.SendResp(
+            ret = self.lib_processor.SendResp(
                 self.game_launcher.addrs[id], self.cur_sgame_ids[id], msg_id
             )
         else:
