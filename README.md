@@ -46,7 +46,7 @@
 The gamecore of hok_env runs on the Windows platform, and the package **_hok_env_** needs to be deployed in linux platforms to interact with the gamecore. 
 We also provided a docker image for training on your computer. In a further version, we will release a gamecore server compatible with linux.
 
-To enable cluster training, a workaround by running Windows gamecore on Linux will be released in January 2023.
+To enable cluster training, here is a workaround by running Windows gamecore on Linux: [run windows gamecore on linux](./docs/run_windows_gamecore_on_linux.md).
 
 ## Installation
 ### Download the hok gamecore 

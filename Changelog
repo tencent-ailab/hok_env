@@ -1,0 +1,31 @@
+# 20230110
+
+Support running Windows gamecore on Linux using Wine:
+
+1. Update gamecore to fix the compatibility with the Wine
+
+2. Add gamecore-server-linux-amd64 to the gamecore pcakge
+
+3. Add remote gamecore server
+    ```
+    export SIMULATOR_USE_WINE=1
+    nohup sh /rl_framework/remote-gc-server/run_and_monitor_gamecore_server.sh &
+    ```
+
+4. Update dockerfile: use ubuntu as the base image
+    ```
+    sh ./build.sh
+    ```
+    See also [Github Action](./.github/workflows/)
+
+5. Sync codes
+    1. Support `SLOW_TIME`
+    2. Fix `NET_CARD_NAME`
+    3. remote check_and_send
+    4. Fix typos
+    5. Fix the zmq server bind error
+    6. Wait for the gamecore process done after `gameover`
+
+6. Update hok_env/hok/lib/interface
+    1. Remove the init move
+    2. Support Python3.8 and Python3.9
