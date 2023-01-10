@@ -20,20 +20,6 @@ jobs:
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       -
-        name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          # list of Docker images to use as base name for tags
-          images: |
-            tencentailab/hok_env
-          # generate Docker tags based on the following events/attributes
-          flavor: |
-            prefix=baseline_1v1_cpu_
-          tags: |
-            type=semver,pattern={{raw}}
-            type=sha,prefix=baseline_1v1_cpu_
-      -
         name: Login to DockerHub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v2
@@ -41,13 +27,52 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
+        name: Docker meta
+        id: meta_cpu_base
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            tencentailab/hok_env
+          flavor: |
+            prefix=cpu_base_
+          tags: |
+            type=semver,pattern={{raw}}
+            type=sha,prefix=cpu_base_
+      -
         name: Build and push
         uses: docker/build-push-action@v3
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          file: dockerfile.cpu
-          cache-from: type=registry,ref=tencentailab/hok_env:buildcache-cpu
-          cache-to: type=registry,ref=tencentailab/hok_env:buildcache-cpu,mode=max
+          tags: ${{ steps.meta_cpu_base.outputs.tags }}
+          labels: ${{ steps.meta_cpu_base.outputs.labels }}
+          file: dockerfile/dockerfile.base.cpu
+          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu_base
+          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu_base,mode=max
+          build-args: |
+            BASE_IMAGE=tencentailab/hok_env:base_common_py37_base_v1.2.0
+      -
+        name: Docker meta
+        id: meta_cpu
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            tencentailab/hok_env
+          flavor: |
+            prefix=cpu_
+          tags: |
+            type=semver,pattern={{raw}}
+            type=sha,prefix=cpu_
+      -
+        name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_cpu.outputs.tags }}
+          labels: ${{ steps.meta_cpu.outputs.labels }}
+          file: dockerfile/dockerfile.dev
+          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu
+          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu,mode=max
+          build-args: |
+            BASE_IMAGE=tencentailab/hok_env:cpu_base_v1.2.0

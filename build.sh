@@ -8,16 +8,21 @@ cpu_gamecore_base=cpu_gamecore_base
 
 common_base_py37=common_base_py37
 common_base_py38=common_base_py38
+build_python_py37=build_python_py37
 build_python_py38=build_python_py38
 
 # common_base image for py37/py38
 docker build -f ./dockerfile/dockerfile.base -t ${common_base_py38} --build-arg=PYTHON_VERSION=3.8.16 .
 docker build -f ./dockerfile/dockerfile.base -t ${build_python_py38} --build-arg=PYTHON_VERSION=3.8.16 --target build_python .
+
 docker build -f ./dockerfile/dockerfile.base -t ${common_base_py37} --build-arg=PYTHON_VERSION=3.7.16 .
+docker build -f ./dockerfile/dockerfile.base -t ${build_python_py37} --build-arg=PYTHON_VERSION=3.7.16 --target build_python .
 
 # py37 for cpu, py38 for gpu
 docker build -f ./dockerfile/dockerfile.base.cpu -t ${cpu_base_name} --build-arg=BASE_IMAGE=${common_base_py37} .
 docker build -f ./dockerfile/dockerfile.base.gpu -t ${gpu_base_name} --build-arg=BASE_IMAGE=${common_base_py38} --build-arg=BUILD_PYTHON_IMAGE=${build_python_py38} .
+
+docker build -f ./dockerfile/dockerfile.base.gpu -t ${gpu_base_name}_build_horovod --target build_horovod --build-arg=BASE_IMAGE=${common_base_py38} --build-arg=BUILD_PYTHON_IMAGE=${build_python_py38} .
 
 # gamecore for cpu
 docker build -f ./dockerfile/dockerfile.gamecore -t ${cpu_gamecore_base} --build-arg=BASE_IMAGE=${cpu_base_name} .
