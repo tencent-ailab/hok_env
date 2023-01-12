@@ -32,7 +32,6 @@ COPY ./rl_framework/model_pool/pkg/model_pool_pkg/ /code/framework/model_pool/
 
 # training code
 COPY ./code /code/code
-COPY ./code/cpu_code/script/sgame_simulator.conf /root/.hok/sgame_simulator.conf
 COPY ./start_dev.sh /start_dev.sh
 
 # monitor config

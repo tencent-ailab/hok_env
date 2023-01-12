@@ -191,9 +191,6 @@ class GameLauncher:
                         time.sleep(1)
 
     def start(self, config_dict, common_config):
-        assert os.path.exists(
-            self.gamecore_path
-        ), "ERROR: gamecore path {} not exists!".format(self.gamecore_path)
 
         # create path
         self.clear_runtime_path()
@@ -451,9 +448,6 @@ class GameLauncherRemote(GameLauncher):
 
     def start(self, config_dict, common_config, need_log=False):
         # "curl -k https://127.0.0.1:23333/v1/newGame -d '{"Token": "123", "CustomConfig": "xxxxx"}'"
-        assert os.path.exists(
-            self.gamecore_path
-        ), "ERROR: gamecore path {} not exists!".format(self.gamecore_path)
 
         for d in config_dict:
             if d is not None and d.get("ip") is not None:
@@ -588,9 +582,16 @@ class ConfigModifier:
         self.runtime_path = runtime_path
         self.runtime_id = runtime_id
         self.config_content = []
-        self.hero_info = [{} for _ in range(num_player)]
         self.num_player = num_player
-        self.default_info = [{} for _ in range(num_player)]
+        self.default_info = [
+            {"hero": "146", "skill": "80121", "port": "35300", "use_common_ai": False},
+            {"hero": "146", "skill": "80121", "port": "35301", "use_common_ai": False},
+        ]
+        self.hero_info = [
+            {"hero": "146", "skill": "80121", "port": "35300", "use_common_ai": False},
+            {"hero": "146", "skill": "80121", "port": "35301", "use_common_ai": False},
+        ]
+
         self.synch_mode = synch_mode
         self.common_config = {
             "ip": "127.0.0.1",
@@ -600,7 +601,7 @@ class ConfigModifier:
             "game_id": None,
         }
 
-        self.load_config(config_path=gamecore_path)
+        # self.load_config(config_path=gamecore_path)
 
     def load_config(self, config_path):
         print("load config...")
