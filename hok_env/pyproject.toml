@@ -1,0 +1,24 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hok"
+version = "1.2.1"
+description = "Honor of Kings: A MOBA game environment for multi-agent reinforcement learning."
+requires-python = ">=3.6<=3.9"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "requests"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/tencent-ailab/hok_env"
+"Bug Tracker" = "https://github.com/tencent-ailab/hok_env/issues"

@@ -263,6 +263,12 @@ https://hub.docker.com/r/tencentailab/hok_env
 
 See also: [run_with_prebuilt_image](./docs/run_with_prebuilt_image.md)
 
+## Install from PyPI
+
+```
+pip install hok
+```
+
 ## Citation
 If you use the gamecore of hok_env or the code in this repository, please cite our paper as follows.
 ```

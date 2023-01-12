@@ -1,0 +1,8 @@
+include hok/config.dat
+include hok/config.json
+include hok/default_hero_config.json
+include hok/lib/interface.cpython-36m-x86_64-linux-gnu.so
+include hok/lib/interface.cpython-37m-x86_64-linux-gnu.so
+include hok/lib/interface.cpython-38-x86_64-linux-gnu.so
+include hok/lib/interface.cpython-39-x86_64-linux-gnu.so
+include hok/unit_test/config.json
