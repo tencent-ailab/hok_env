@@ -1,1 +1,0 @@
-ofed_info -s

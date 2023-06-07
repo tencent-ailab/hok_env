@@ -104,3 +104,28 @@ jobs:
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu,mode=max
           build-args: |
             BASE_IMAGE=tencentailab/hok_env:gpu_base_v1.2.0
+      -
+        name: Docker meta 3v3
+        id: meta_gpu_3v3
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            tencentailab/hok_env
+          flavor: |
+            prefix=gpu_3v3_
+          tags: |
+            type=semver,pattern={{raw}}
+            type=sha,prefix=gpu_3v3_
+      -
+        name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_gpu.outputs.tags }}
+          labels: ${{ steps.meta_gpu.outputs.labels }}
+          file: dockerfile/dockerfile.dev.3v3
+          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu_3v3
+          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu_3v3,mode=max
+          build-args: |
+            BASE_IMAGE=tencentailab/hok_env:gpu_base_v1.2.0

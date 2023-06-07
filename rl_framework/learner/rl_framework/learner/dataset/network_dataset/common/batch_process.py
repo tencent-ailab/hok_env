@@ -1,4 +1,3 @@
-import copy
 import ctypes
 import os
 import time
@@ -14,11 +13,13 @@ class BatchManager(object):
         self.process_num = process_num
         self.use_fp16 = use_fp16
         if self.use_fp16:
-            self.data_type = ctypes.c_uint16
+            self.c_data_type = ctypes.c_uint16
+            self.data_type = np.float16
         else:
-            self.data_type = ctypes.c_float
+            self.c_data_type = ctypes.c_float
+            self.data_type = np.float32
         self.data = Array(
-            self.data_type, process_num * 2 * sample_size * batch_size, lock=False
+            self.c_data_type, process_num * 2 * sample_size * batch_size, lock=False
         )
         self.state = Array(ctypes.c_int, process_num * 2 + 1, lock=False)
         for index in range(len(self.state)):
@@ -57,12 +58,10 @@ class BatchManager(object):
         nparray = nparray.reshape(
             self.process_num * 2 * self.batch_size, self.sample_size
         )
-        value = copy.deepcopy(
-            nparray[
-                batch_index * self.batch_size : batch_index * self.batch_size
-                + self.batch_size
-            ]
-        )
+        value = nparray[
+            batch_index * self.batch_size : batch_index * self.batch_size
+            + self.batch_size
+        ]
         return value
 
     def set_state(self, index):
@@ -81,6 +80,7 @@ class BatchProcess(object):
         self.process_num = process_num
         self.use_fp16 = use_fp16
         self.batch_queue = Queue()
+        self.free_queue = Queue()
         self.batch_manager = BatchManager(
             batch_size=batch_size,
             sample_size=sample_size,
@@ -90,27 +90,22 @@ class BatchProcess(object):
         self.pids = []
         self.last_get_index = None
 
-    def __process_run(self, process_index, get_sample_func, full_queue):
+    def __process_run(self, process_index, get_sample_func, full_queue, free_queue):
         print(
             "[BatchProcess::__process_run] process_index:{} pid:{}".format(
                 process_index, os.getpid()
             )
         )
         while True:
-            if self.batch_manager.state[2 * process_index] == 1:
-                batch_index = 2 * process_index
-            elif self.batch_manager.state[2 * process_index + 1] == 1:
-                batch_index = 2 * process_index + 1
-            else:
-                time.sleep(0.005)
-                continue
+            batch_index = free_queue.get()
             for sample_index in range(self.batch_size):
                 sample = get_sample_func()
                 self.batch_manager.set_one_sample(sample, batch_index, sample_index)
-            self.batch_manager.state[batch_index] = 0
             full_queue.put(batch_index)
 
     def process(self, get_data_func):
+        for batch_index in range(self.process_num * 2):
+            self.free_queue.put(batch_index)
         for process_index in range(self.process_num):
             pid = Process(
                 target=self.__process_run,
@@ -118,6 +113,7 @@ class BatchProcess(object):
                     process_index,
                     get_data_func,
                     self.batch_queue,
+                    self.free_queue,
                 ),
             )
             pid.daemon = True
@@ -125,11 +121,12 @@ class BatchProcess(object):
             self.pids.append(pid)
 
     def get_batch_data(self):
-        if self.last_get_index is not None:
-            self.batch_manager.set_state(self.last_get_index)
         batch_index = self.batch_queue.get()
-        self.last_get_index = batch_index
-        return self.batch_manager.get_batch_sample(batch_index)
+        sample = self.batch_manager.get_batch_sample(batch_index)
+        return batch_index, sample
+
+    def put_free_data(self, batch_index):
+        self.free_queue.put(batch_index)
 
     def exit(self):
         for pid in self.pids:

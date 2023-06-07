@@ -1,0 +1,8 @@
+#!/usr/bin/expect -f
+set HOST [lindex $argv 0]
+set NEW_PASSWORD [lindex $argv 1]
+
+spawn ssh-copy-id -p 36001 $HOST
+expect "password:"
+send "$NEW_PASSWORD\n"
+expect eof

@@ -76,3 +76,28 @@ jobs:
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu,mode=max
           build-args: |
             BASE_IMAGE=tencentailab/hok_env:cpu_base_v1.2.0
+      -
+        name: Docker meta 3v3
+        id: meta_cpu_3v3
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            tencentailab/hok_env
+          flavor: |
+            prefix=cpu_3v3_
+          tags: |
+            type=semver,pattern={{raw}}
+            type=sha,prefix=cpu_3v3_
+      -
+        name: Build and push 3v3
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_cpu_3v3.outputs.tags }}
+          labels: ${{ steps.meta_cpu_3v3.outputs.labels }}
+          file: dockerfile/dockerfile.dev.3v3
+          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu_3v3
+          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu_3v3,mode=max
+          build-args: |
+            BASE_IMAGE=tencentailab/hok_env:cpu_base_v1.2.0

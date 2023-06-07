@@ -1,10 +1,11 @@
 #  @package rl_framework.learner.dataset.sample_generation
 #  The module defines base class for sample parsing
 from abc import abstractmethod
+import numpy as np
 
 
 #  The class is the base class for sample parsing
-class OfflineRlInfoAdapter(object):
+class OfflineRlInfoAdapterBase(object):
     #  The constructor.
     #  @param self The object pointer.
     def __init__(self):
@@ -22,8 +23,24 @@ class OfflineRlInfoAdapter(object):
 
     #  Sample length acquisition interface,
     #  get_data_shapes() is a virtual function.
-    #  get_data_shapes() is a static function.
     #  @return [[sample_len]]
-    @staticmethod
+    @abstractmethod
     def get_data_shapes():
         raise NotImplementedError("deserialization: not implemented")
+
+
+class OfflineRlInfoAdapter(OfflineRlInfoAdapterBase):
+    def __init__(self, data_shapes):
+        super().__init__()
+        self.data_shapes = data_shapes
+
+    def deserialization(self, receive_data):
+        return self.deserialization_bytes(receive_data)
+
+    def deserialization_bytes(self, receive_data):
+        data = []
+        data.append(np.frombuffer(receive_data, "f4"))
+        return data
+
+    def get_data_shapes(self):
+        return [[sum(map(sum, self.data_shapes))]]

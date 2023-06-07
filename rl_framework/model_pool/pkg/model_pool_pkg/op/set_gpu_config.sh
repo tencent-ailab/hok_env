@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ip=`hostname -i`
+ip=`hostname -I | awk '{print $1;}'`
 
 cd ../config && rm trpc_go.yaml
 cd ../config && cp trpc_go.yaml.gpu trpc_go.yaml

@@ -1,0 +1,19 @@
+#!/usr/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+conf=$1
+new_conf=${conf}.new
+work_dir=$(pwd)
+
+set -ex
+
+python3 ${SCRIPT_DIR}/process.py $conf $new_conf ${work_dir}
+
+GAMECORE_PATH=${GAMECORE_PATH:-"/rl_framework/gamecore/"}
+export WINEPATH="${GAMECORE_PATH}/lib/;${GAMECORE_PATH}/bin/"
+
+mkdir -p /.wine/
+export WINEPREFIX=/.wine/$KAIWU_RUNTIME_ID
+
+wine ${GAMECORE_PATH}/bin/sgame_simulator_repeated_zmq.exe $new_conf

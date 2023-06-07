@@ -1,5 +1,14 @@
 # Honor of Kings AI Open Environment of Tencent(腾讯王者荣耀AI开放环境)
 ![avatar](./docs/hok_1v1.png)
+
+## Update: 3v3 Mode Now Available
+
+```
+python3.7 -c "from hok.hok3v3.unit_test.test_env import run_test; run_test()"
+```
+
+Please refer to [hok3v3](https://doc.aiarena.tencent.com/paper/hok3v3/latest/hok3v3_env/honor-of-kings/) for further information.
+
 ## Introduction
 
 [![Image](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml/badge.svg)](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml)

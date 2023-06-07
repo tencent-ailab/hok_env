@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 
 class NetworkDatasetBase(object):
-    def __init__(self, config_manager, AdapterClass):
+    def __init__(self, config_manager, adapter):
         raise NotImplementedError("build model: not implemented!")
 
     @abstractmethod

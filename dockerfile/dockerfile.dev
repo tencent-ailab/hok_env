@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=cpu_bse
+ARG BASE_IMAGE=cpu_base
 
 FROM ${BASE_IMAGE} 
 
@@ -12,6 +12,13 @@ RUN sed -i "s/;http_port =.*/http_port = 8081/g" /etc/grafana/grafana.ini
 #     --extra-index-url=https://mirrors.tencent.com/pypi/simple
 
 # hok_env
+RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage && \
+    chmod u+x nvim.appimage && \
+    ./nvim.appimage --appimage-extract && \
+    cp -r ./squashfs-root/usr/ / && \
+    rm -r squashfs-root nvim.appimage && \
+    ln -sf /usr/bin/nvim /usr/bin/vim
+
 COPY hok_env /hok_env
 RUN pip3 install --no-cache-dir -e /hok_env
 
@@ -28,16 +35,18 @@ RUN pip3 install --no-cache-dir --upgrade build && \
     cd /rl_framework/monitor && python3 -m build && \
     pip3 install --no-cache-dir dist/*.whl && rm -rf dist/
 
-COPY ./rl_framework/model_pool/pkg/model_pool_pkg/ /code/framework/model_pool/
-
 # training code
-COPY ./code /code/code
-COPY ./start_dev.sh /start_dev.sh
+COPY ./aiarena/1v1/actor /aiarena/code/actor
+COPY ./aiarena/1v1/learner /aiarena/code/learner
+COPY ./aiarena/1v1/common /aiarena/code/common
+COPY ./aiarena/remote-gc-server /aiarena/remote-gc-server
+COPY ./aiarena/battle /aiarena/battle
+COPY ./aiarena/scripts /aiarena/scripts
 
 # monitor config
-COPY code/common/monitor/dashboard/*.json /var/lib/grafana/dashboards/
-COPY code/common/monitor/config/datasource.yaml /etc/grafana/provisioning/datasources/
-COPY code/common/monitor/config/dashboard.yaml /etc/grafana/provisioning/dashboards/
+COPY ./aiarena/1v1/common/monitor/dashboard/*.json /var/lib/grafana/dashboards/
+COPY ./aiarena/1v1/common/monitor/config/datasource.yaml /etc/grafana/provisioning/datasources/
+COPY ./aiarena/1v1/common/monitor/config/dashboard.yaml /etc/grafana/provisioning/dashboards/
 
 WORKDIR /
 

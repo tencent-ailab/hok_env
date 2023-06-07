@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 name = "hok"
 version = "1.2.1"
 description = "Honor of Kings: A MOBA game environment for multi-agent reinforcement learning."
-requires-python = ">=3.6<=3.9"
+requires-python = ">=3.6, <=3.9"
 
 classifiers = [
     "Programming Language :: Python :: 3",

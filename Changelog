@@ -1,3 +1,26 @@
+
+# 20230607
+
+3v3 mode now available(python 3.7 required)
+
+1. Refactor hok_env: renamed hok -> hok1v1
+2. Support pytorch in rl_framework
+3. Support 3v3 mode: hok3v3 added
+    1. Run the unit test
+    ```
+    python -c "from hok.hok3v3.unit_test.test_env import run_test; run_test()"
+    ```
+4. Example: 3v3 dev image
+    1. build image
+    ```
+    docker build -t test -f dockerfile/dockerfile.dev.3v3 .
+    ```
+    2. run train test (start gamecore server on `127.0.0.1:23432` before the test)
+    ```
+    docker run -it --network host test bash
+    sh /aiarena/scripts/start_test.sh
+    ```
+
 # 20230110
 
 Support running Windows gamecore on Linux using Wine:

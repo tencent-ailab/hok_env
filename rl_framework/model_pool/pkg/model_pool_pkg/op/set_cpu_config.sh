@@ -8,7 +8,7 @@ fi
 #MODELPOOL_ADDR=$1
 MODELPOOL_ADDR=$1":10013"
 
-ip=`hostname -i`
+ip=`hostname -I | awk '{print $1;}'`
 TVMEC_DOCKER_ID=`hostname`
 if [ -z "$CLUSTER_CONTEXT" ];then
     CLUSTER_CONTEXT='default'

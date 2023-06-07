@@ -15,14 +15,35 @@ class ConfigControl(object):
         self.data_keys = ["input_data"]
         config = configparser.ConfigParser()
         config.read(config_file)
+
+        self.backend = (
+            config.get("main", "backend")
+            if "backend" in config.options("main")
+            else "tensorflow"
+        )
+
         self.ips = config.get("main", "ips").split(",")
         self.ports = json.loads(config.get("main", "ports"))
         self.batch_size = config.getint("main", "batch_size")
         self.mem_process_num = config.getint("main", "mem_process_num")
         self.save_model_steps = config.getint("main", "save_model_steps")
+        self.save_model_dir = (
+            config.get("main", "save_model_dir")
+            if "save_model_dir" in config.options("main")
+            else "./checkpoints"
+        )
+        self.send_model_dir = (
+            config.get("main", "send_model_dir")
+            if "send_model_dir" in config.options("main")
+            else "../send_model/model/"
+        )
+        self.push_to_modelpool = (
+            config.get("main", "push_to_modelpool")
+            if "push_to_modelpool" in config.options("main")
+            else False
+        )
         self.display_every = config.getint("main", "display_every")
         self.max_steps = config.getint("main", "max_steps")
-        self.training_type = config.get("main", "training_type")
         self.train_dir = config.get("main", "train_dir")
         self.warmup_steps = (
             config.get("main", "warmup_step")
@@ -46,21 +67,16 @@ class ConfigControl(object):
         )
 
         self.use_init_model = config.getboolean("model", "use_init_model")
+        self.init_model_path = (
+            config.get("model", "init_model_path")
+            if "init_model_path" in config.options("model")
+            else "./model/init/"
+        )
         self.use_xla = config.getboolean("model", "use_xla")
         self.use_mix_precision = config.getboolean("model", "use_mix_precision")
         self.use_fp16 = (
             config.getboolean("model", "use_fp16")
             if "use_fp16" in config.options("model")
-            else False
-        )
-        self.save_path = (
-            config.get("model", "save_path")
-            if "save_path" in config.options("model")
-            else "../send_model/model/"
-        )
-        self.push_to_modelpool = (
-            config.get("model", "push_to_modelpool")
-            if "push_to_modelpool" in config.options("model")
             else False
         )
 
@@ -85,3 +101,9 @@ class ConfigControl(object):
         self.max_sample = config.getint("dataset", "store_max_sample")
         self.sample_process = config.getint("dataset", "sample_process")
         self.batch_process = config.getint("dataset", "batch_process")
+
+    def reset_hvd_rank(self, hvd_rank, hvd_size, hvd_local_rank, hvd_local_size):
+        self.hvd_rank = hvd_rank
+        self.hvd_size = hvd_size
+        self.hvd_local_rank = hvd_local_rank
+        self.hvd_local_size = hvd_local_size

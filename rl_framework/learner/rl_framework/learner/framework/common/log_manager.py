@@ -10,9 +10,14 @@ from rl_framework.learner.framework.common import *
 from rl_framework.monitor import InfluxdbMonitorHandler
 
 
-@singleton
-class LogManager(object):
-    def __init__(self):
+class LogManagerBase(object):
+    def __init__(
+        self,
+        train_log="/aiarena/logs/learner/train.log",
+        loss_file_path="/aiarena/logs/learner/loss.txt",
+        backend="tensorflow",
+    ):
+        self.backend = backend
         # create logger
         logger = logging.getLogger("main")
         logger.setLevel(logging.DEBUG)
@@ -24,11 +29,13 @@ class LogManager(object):
         )
 
         # set file handler: file rotates with time
-        if not os.path.exists("/code/logs/gpu_log/"):
-            # os.makedirs('./log')
-            os.system("mkdir /code/logs/gpu_log/")
+        os.makedirs(os.path.dirname(train_log), exist_ok=True)
+        os.makedirs(os.path.dirname(loss_file_path), exist_ok=True)
         rf_handler = logging.handlers.TimedRotatingFileHandler(
-            filename="/code/logs/gpu_log/train.log", when="H", interval=12, backupCount=1
+            filename=train_log,
+            when="H",
+            interval=12,
+            backupCount=1,
         )
         rf_handler.setLevel(logging.DEBUG)
         rf_handler.setFormatter(formatter)
@@ -47,7 +54,6 @@ class LogManager(object):
 
         logger.addHandler(rf_handler)
         logger.addHandler(console)
-        loss_file_path = "/code/logs/gpu_log/loss.txt"
         self.loss_writer = open(loss_file_path, "wt")
         self.total_noise_scale = 0.0
 
@@ -59,8 +65,10 @@ class LogManager(object):
         consume_speed = results["sample_consume_speed"]
 
         loss = results["total_loss"]
-        noise_scale = results["noise_scale"]
-        batch_noisescale = float(batch_size * gpu_nums) / noise_scale
+        noise_scale = results.get("noise_scale", 0)
+        batch_noisescale = (
+            float(batch_size * gpu_nums) / noise_scale if noise_scale else 0.0
+        )
         noise_scale_mean = 0
 
         log_str = ""
@@ -85,17 +93,13 @@ class LogManager(object):
         self._add_float(monitor_data, "noise_scale", noise_scale)
         self._add_float(monitor_data, "batch_noisescale", batch_noisescale)
         self._add_float(monitor_data, "noise_scale_mean", noise_scale_mean)
-        if "info_map" in results.keys():
-            for k, v in results["info_map"].items():
-                if type(v).__name__ == "list":
-                    for index, data in enumerate(v):
-                        self._add_float(monitor_data, f"{k}_{index}", data)
-                elif type(v).__name__ == "ndarray":
-                    results["info_map"][k] = v.tolist()
-                    for index, data in enumerate(results["info_map"][k]):
-                        self._add_float(monitor_data, f"{k}_{index}", data)
+        if type(results["info_list"]) == list:
+            for idx, info in enumerate(results["info_list"]):
+                if type(info) == list:
+                    for idx2, _info in enumerate(info):
+                        self._add_float(monitor_data, f"loss_{idx}_{idx2}", _info)
                 else:
-                    self._add_float(monitor_data, k, v)
+                    self._add_float(monitor_data, f"loss_{idx}", info)
         else:
             for k, v in results["info_list"].items():
                 if type(v).__name__ == "list":
@@ -117,30 +121,29 @@ class LogManager(object):
                 log_str += "%s, " % str(info)
             LOG_FN(log_str)
 
-        if "info_map" in results.keys() or "info_list" in results.keys():
+        if "info_list" in results.keys():
             self._write_loss_log(results)
 
     def _add_float(self, data, key, val):
-        val = float(val)
-        if not math.isnan(val) and not math.isinf(val):
-            data[key] = val
+        try:
+            val = float(val)
+            if not math.isnan(val) and not math.isinf(val):
+                data[key] = val
+        except Exception as e:
+            LOG_FN("add val failed: %s, %s (%s)" % (key, val, e))
 
     def _write_loss_log(self, results):
         local_step = results["step"]
         hostname = results["ip"]
         timestamp = time.strftime("%m/%d/%Y-%H:%M:%S", time.localtime())
-        info_map = {}
-        if "info_map" in results.keys():
-            info_map = results["info_map"]
-        else:
-            info_map = results["info_list"]
+        info_list = results["info_list"]
 
         loss_log = {
             "role": "learner",
             "ip_address": str(hostname),
             "step": str(local_step),
             "timestamp": timestamp,
-            "info_map": str(info_map),
+            "info_list": str(info_list),
         }
         for key, val in sorted(loss_log.items()):
             if hasattr(val, "dtype"):
@@ -153,3 +156,8 @@ class LogManager(object):
 
     def upload_monitor_data(self, data: dict):
         self.monitor_logger.info(data)
+
+
+@singleton
+class LogManager(LogManagerBase):
+    pass

@@ -18,11 +18,13 @@ class MemBuffer(object):
         self._sample_size = int(sample_size)
         self._use_fp16 = use_fp16
         if self._use_fp16:
-            self._data_type = ctypes.c_uint16
+            self._c_data_type = ctypes.c_uint16
+            self._data_type = np.float16
         else:
-            self._data_type = ctypes.c_float
+            self._c_data_type = ctypes.c_float
+            self._data_type = np.float32
         self._data_queue = Array(
-            self._data_type, max_sample_num * sample_size, lock=False
+            self._c_data_type, max_sample_num * sample_size, lock=False
         )
         self._data_status = [
             Value(ctypes.c_bool, False, lock=True) for index in range(max_sample_num)

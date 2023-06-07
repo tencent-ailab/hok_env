@@ -1,6 +1,8 @@
-from loguru import logger
-
 import datetime
+import os
+import sys
+
+from loguru import logger
 
 INFO = "INFO"
 CRITICAL = "CRITICAL"
@@ -29,6 +31,13 @@ g_log_time = {
 }
 
 
+def setup_logger(filename):
+    logger.remove()
+    logger.add(sys.stdout, level="INFO")
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    logger.add(filename, rotation="50 MB", level="INFO")
+
+
 # log_time
 def log_time(text):
     def decorator(func):
@@ -37,6 +46,8 @@ def log_time(text):
             result = func(*args, **kws)
             end = datetime.datetime.now()
             time = (end - start).seconds * 1000.0 + (end - start).microseconds / 1000.0
+            if g_log_time.get(text) is None:
+                g_log_time[text] = []
             g_log_time[text].append(time)
             return result
 
