@@ -193,7 +193,7 @@ class Model(nn.Module):
 
         self.value_mlp = MLP([256, 64, 1], "hero_value_mlp")
 
-    def forward(self, data_list):
+    def forward(self, data_list, inference=True):
 
         all_hero_fc_result_list = []
         hero_public_first_result_list = []
@@ -380,7 +380,7 @@ class Model(nn.Module):
         ]
         return rst_list
 
-    def format_data(self, datas):
+    def format_data(self, datas, inference=True):
         hero_data_list = []
         for hero_index in range(self.hero_num):
             hero_data = datas[hero_index].float()

@@ -192,7 +192,7 @@ class NetworkModel(nn.Module):
 
         self.value_mlp = MLP([256, 64, 1], "hero_value_mlp")
 
-    def forward(self, data_list):
+    def forward(self, data_list, inference=False):
 
         all_hero_result_list = []
         hero_public_first_result_list = []
@@ -538,7 +538,7 @@ class NetworkModel(nn.Module):
             ],
         ]
 
-    def format_data(self, datas):
+    def format_data(self, datas, inference=False):
         datas = datas.view(-1, self.hero_num, self.hero_data_len)
         data_list = datas.permute(1, 0, 2)
 

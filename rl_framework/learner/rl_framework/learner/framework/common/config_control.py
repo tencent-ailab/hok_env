@@ -5,13 +5,7 @@ from rl_framework.learner.framework.common import *
 
 @singleton
 class ConfigControl(object):
-    def __init__(
-        self, config_file="code/common.conf", rank=0, size=1, local_rank=0, local_size=1
-    ):
-        self.hvd_rank = rank
-        self.hvd_size = size
-        self.hvd_local_rank = local_rank
-        self.hvd_local_size = local_size
+    def __init__(self, config_file="code/common.conf"):
         self.data_keys = ["input_data"]
         config = configparser.ConfigParser()
         config.read(config_file)
@@ -38,7 +32,7 @@ class ConfigControl(object):
             else "../send_model/model/"
         )
         self.push_to_modelpool = (
-            config.get("main", "push_to_modelpool")
+            config.getboolean("main", "push_to_modelpool")
             if "push_to_modelpool" in config.options("main")
             else False
         )
@@ -55,6 +49,10 @@ class ConfigControl(object):
             if "mempool_path" in config.options("main")
             else "/data1/reinforcement_platform/mem_pool_server_pkg"
         )
+
+        # torch-only: horovod / ddp / None
+        self.distributed_backend = config.get('main', 'distributed_backend', fallback=None)
+
         self.print_timeline = (
             config.getboolean("main", "print_timeline")
             if "print_timeline" in config.options("main")
@@ -66,19 +64,25 @@ class ConfigControl(object):
             else False
         )
 
+        self.dump_profile = config.getboolean('main', 'dump_profile', fallback=False)  # torch-only
+
         self.use_init_model = config.getboolean("model", "use_init_model")
         self.init_model_path = (
             config.get("model", "init_model_path")
             if "init_model_path" in config.options("model")
             else "./model/init/"
         )
-        self.use_xla = config.getboolean("model", "use_xla")
+        self.use_xla = config.getboolean('model', 'use_xla')  # tf-only
+        self.use_jit = config.getboolean('model', 'use_jit', fallback=False)  # torch-only
         self.use_mix_precision = config.getboolean("model", "use_mix_precision")
+        self.channels_last = config.getboolean('model', 'channels_last', fallback=False)  # torch-only
         self.use_fp16 = (
             config.getboolean("model", "use_fp16")
             if "use_fp16" in config.options("model")
             else False
         )
+
+        self.has_unused_params = config.getboolean('model', 'has_unused_params', fallback=False)  # torch ddp-only
 
         self.check_values = config.getboolean("grads", "check_values")
         self.use_fusion = config.getboolean("grads", "use_fusion")
@@ -101,9 +105,3 @@ class ConfigControl(object):
         self.max_sample = config.getint("dataset", "store_max_sample")
         self.sample_process = config.getint("dataset", "sample_process")
         self.batch_process = config.getint("dataset", "batch_process")
-
-    def reset_hvd_rank(self, hvd_rank, hvd_size, hvd_local_rank, hvd_local_size):
-        self.hvd_rank = hvd_rank
-        self.hvd_size = hvd_size
-        self.hvd_local_rank = hvd_local_rank
-        self.hvd_local_size = hvd_local_size

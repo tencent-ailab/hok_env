@@ -1,7 +1,9 @@
 ARG BASE_IMAGE=cpu_base
 
-FROM ${BASE_IMAGE} as gamecore
+ARG INTERNAL_IMAGE=wine_base
 
+# Stage1: copy and unzip hok_env_gamecore.zip
+FROM ${BASE_IMAGE} as gamecore
 RUN apt update && \
     apt install -y unzip && \
     rm -rf /var/lib/apt/lists/*
@@ -11,7 +13,12 @@ COPY ./hok_env_gamecore.zip ./
 RUN mkdir -p =/rl_framework && \
     unzip ./hok_env_gamecore.zip -d /rl_framework
 
-FROM ${BASE_IMAGE}
+# Stage2-1: copy gamecore only
+FROM ${BASE_IMAGE} as gamecore_only
+COPY --from=gamecore /rl_framework/gamecore/ /rl_framework/gamecore/
+
+# Stage2-2: install wine and copy gamecore/license.dat
+FROM ${BASE_IMAGE} as wine_base
 
 RUN dpkg --add-architecture i386
 
@@ -23,12 +30,14 @@ RUN apt update && \
     apt install --install-recommends -y winehq-stable && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./code/remote-gc-server /rl_framework/remote-gc-server
+ENV WINEDEBUG=-all
 
 COPY --from=gamecore /rl_framework/gamecore/ /rl_framework/gamecore/
 COPY ./license.dat /rl_framework/gamecore/core_assets/
 
-RUN chmod a+x /rl_framework/gamecore/* /rl_framework/gamecore/bin/*
+# Stage3: copy gamecore-server scripts to final image
+FROM ${INTERNAL_IMAGE}
 
+COPY ./aiarena/remote-gc-server /rl_framework/remote-gc-server
+RUN chmod a+x /rl_framework/gamecore/* /rl_framework/gamecore/bin/*
 ENV GAMECORE_PATH=/rl_framework/gamecore
-ENV WINEDEBUG=-all

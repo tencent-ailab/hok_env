@@ -1,9 +1,10 @@
 import ctypes
 import os
-import time
 from multiprocessing import Array, Process, Queue, Value
 
 import numpy as np
+
+import rl_framework.common.logging as LOG
 
 
 class BatchManager(object):
@@ -31,7 +32,7 @@ class BatchManager(object):
             isinstance(sample, np.ndarray)
             or sample.shape == (1, self.sample_size * self.batch_size)
         ):
-            print("set_batch_sample error batch", sample.shape)
+            LOG.info(f"set_batch_sample error batch {sample.shape}")
             return False
         nparray = np.frombuffer(self.data, dtype=self.data_type)
         nparray = nparray.reshape(
@@ -44,7 +45,7 @@ class BatchManager(object):
         if not (
             isinstance(sample, np.ndarray) or sample.shape == (1, self.sample_size)
         ):
-            print("set_one_sample error sample", sample.shape)
+            LOG.info(f"set_one_sample error sample {sample.shape}")
             return False
         nparray = np.frombuffer(self.data, dtype=self.data_type)
         nparray = nparray.reshape(
@@ -91,7 +92,7 @@ class BatchProcess(object):
         self.last_get_index = None
 
     def __process_run(self, process_index, get_sample_func, full_queue, free_queue):
-        print(
+        LOG.info(
             "[BatchProcess::__process_run] process_index:{} pid:{}".format(
                 process_index, os.getpid()
             )

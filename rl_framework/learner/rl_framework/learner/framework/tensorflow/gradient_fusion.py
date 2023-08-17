@@ -1,7 +1,7 @@
 #  definition of node and gradient fusion.
 try:
     import horovod.tensorflow as hvd
-
+    hvd.init()
     has_hvd = True
 except Exception:  # pylint: disable=broad-except
     has_hvd = False
@@ -10,6 +10,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 from rl_framework.learner.framework.common.config_control import ConfigControl
+import rl_framework.common.logging as LOG
 
 
 #  The class describes some information about the node
@@ -178,7 +179,7 @@ class GradientFusion(object):
 
         for i in range(len(boundaries) + 1):
             if hvd.rank() == 0:
-                print(orig_sizes[i])
+                LOG.info(orig_sizes[i])
 
             concatenated_grad = tf.concat(flat_tensors[i], 0)
             concatenated_grad_hvd = hvd.allreduce(
@@ -263,7 +264,7 @@ class GradientFusion(object):
                             continue
 
                     if len(grad_scope) == 0:
-                        print(
+                        LOG.info(
                             "%dth grad has no _XlaScope, failed to use xlascope_fusion."
                             % i
                         )
@@ -300,7 +301,7 @@ class GradientFusion(object):
             index += 1
 
         for i in range(indexs):
-            print(hvd.rank(), "fusion grad: ", orig_sizes[i])
+            LOG.info("[rank: {}] fusion grad: {}", hvd.rank(), orig_sizes[i])
             if len(flat_tensors[i]) == 1:
                 concatenated_grad = flat_tensors[i][0]
                 concatenated_grad_hvd = hvd.allreduce(

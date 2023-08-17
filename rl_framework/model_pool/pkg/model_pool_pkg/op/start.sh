@@ -1,14 +1,14 @@
 #!/bin/bash
 
 if [ $# -lt 1 ];then
-    echo "usage $0 role learner_iplist log_dir"
+    echo "usage $0 role master_ip log_dir"
     exit -1
 fi
 
 role=$1
-learner_iplist=$2
+master_ip=$2
 
-LOG_DIR=$3/model_pool
+LOG_DIR=${3-"/aiarena/logs/"}/model_pool
 mkdir -p $LOG_DIR
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -21,7 +21,6 @@ chmod +x ../bin/modelpool ../bin/modelpool_proxy
 ln -sfnT $LOG_DIR $SCRIPT_DIR/../log
 
 if [ $role = "cpu" ];then
-   master_ip=`head -n 1 ${learner_iplist} | awk '{print $1}'`
    bash set_cpu_config.sh $master_ip
    cd ../bin && nohup ./modelpool -conf=../config/trpc_go.yaml > /dev/null 2>&1 &
    cd ../bin && nohup ./modelpool_proxy -fileSavePath=${MODEL_POOL_FILE_SAVE_PATH} > ${LOG_DIR}/modelpool_proxy.log 2>&1 &

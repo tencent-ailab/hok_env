@@ -27,28 +27,6 @@ class AIServer:
         self.lib_processor.Init(config_path)
         self.zmq_server = None
         self.action_size = [12, 16, 16, 16, 16, 8]
-        self.HERO_ID_INDEX_DICT = {
-            112: 0,
-            121: 1,
-            123: 2,
-            131: 3,
-            132: 4,
-            133: 5,
-            140: 6,
-            141: 7,
-            146: 8,
-            150: 9,
-            154: 10,
-            157: 11,
-            163: 12,
-            169: 13,
-            175: 14,
-            182: 15,
-            193: 16,
-            199: 17,
-            502: 18,
-            513: 19,
-        }
         self.lstm_info = {}
 
     def _save_lstm_info(self, agent, sgame_id):
@@ -94,19 +72,8 @@ class AIServer:
             if state is None:
                 continue
             for k in state:
-                if isinstance(state[k], tuple) and k in ["legal_action"]:
+                if isinstance(state[k], tuple) and k in ["legal_action", "observation"]:
                     state[k] = np.array(state[k])
-                if isinstance(state[k], tuple) and k in ["observation"]:
-                    state[k] = np.array(state[k])
-                    hero_id_vec = np.zeros(
-                        [
-                            len(self.HERO_ID_INDEX_DICT),
-                        ],
-                        dtype=np.float,
-                    )
-                    hero_id_vec[self.HERO_ID_INDEX_DICT[hero_id]] = 1
-
-                    state[k] = np.concatenate((state[k], hero_id_vec), axis=0)
                 if isinstance(state[k], dict) and k in ["sub_action_mask"]:
                     for i in state[k]:
                         state[k][i] = np.array(state[k][i])

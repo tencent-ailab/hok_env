@@ -1,14 +1,13 @@
 # use default agent:
 # from hok.hok3v3.agent import Agent as Agent
 
-import json
 import math
 
 from numpy.random import rand
 import numpy as np
 
 # custom agent
-from hok.hok3v3.agent import Agent as BaseAgent
+from agent.agent import Agent as BaseAgent
 
 
 pred_ret_shape = [(1, 162), (1, 162), (1, 162)]

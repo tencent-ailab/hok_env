@@ -16,6 +16,7 @@ class ResponceType(Enum):
 
 import numpy as np
 import hok.hok1v1.lib.interface as interface
+import hok.common.log as LOG
 
 interface_default_config = os.path.join(os.path.dirname(__file__), "config.dat")
 
@@ -398,7 +399,7 @@ class HoK1v1:
         if 0 < len(pb.command_info_list):
             # set current player
             for cmd in pb.command_info_list:
-                print("cmd.player_id", cmd.player_id)
+                # print("cmd.player_id", cmd.player_id)
                 self.player_list[id] = cmd.player_id
 
             # get camp info
@@ -483,7 +484,6 @@ class HoK1v1:
                     self.start_frame = self.cur_frame_no
 
                 if req_pb.gameover:
-                    print("game is over!")
                     self.is_gameover = True
 
                 if (not first_frame) and (
@@ -509,8 +509,8 @@ class HoK1v1:
                     # SEND_CCD_ONE_HERO, get normal feature vector, break
                     state = self._state_tuple2np(ret[1:])[0]
                     if req_pb.gameover:
-                        print(
-                            "gameover at frameno {} of {}!".format(req_pb.frame_no, id)
+                        LOG.info(
+                            "gameover at frameno {} of agent {}!", req_pb.frame_no, id
                         )
                     # LOG.debug("Parsing normal feature of len({}).".format(len(states)))
                     ret_num += 1
@@ -546,7 +546,10 @@ class HoK1v1:
         close game by sending signals to gamecore
         """
         while not self.is_gameover:
-            print("game not end, send close game at first", self.cur_frame_no)
+            LOG.info(
+                "game not end, send close game at first: cur_frame_no({})",
+                self.cur_frame_no,
+            )
             for i in range(self.PLAYER_NUM):
 
                 # silently skip if is common ai
@@ -565,10 +568,10 @@ class HoK1v1:
                 self._gameover(i)
 
         # wait game over
-        self.game_launcher.wait_battle(self.runtime_id, self.wait_game_max_timeout)
+        self.game_launcher.wait_game(self.runtime_id, self.wait_game_max_timeout)
 
         # force close
-        self.game_launcher.stop_battle(self.runtime_id)
+        self.game_launcher.stop_game(self.runtime_id)
 
     def reset(
         self,
@@ -632,8 +635,11 @@ class HoK1v1:
 
         self.player_masks = use_common_ai.copy()
 
-        self.game_launcher.start_battle(
-            self.runtime_id, self._get_server(use_common_ai), camp_hero_list
+        self.game_launcher.start_game(
+            self.runtime_id,
+            self._get_server(use_common_ai),
+            camp_hero_list,
+            eval_mode=self.eval_mode,
         )
         self._act_que = [queue.Queue() for _ in range(self.PLAYER_NUM)]
 

@@ -1,26 +1,18 @@
 ARG BASE_IMAGE=cpu_base
 
-FROM ${BASE_IMAGE} 
+FROM ${BASE_IMAGE} as dev_base
+
+RUN wget https://github.com/prometheus/influxdb_exporter/releases/download/v0.10.0/influxdb_exporter-0.10.0.linux-amd64.tar.gz \
+    && tar -xf influxdb_exporter-0.10.0.linux-amd64.tar.gz \
+    && cp influxdb_exporter-0.10.0.linux-amd64/influxdb_exporter /usr/bin/ \
+    && rm -rf influxdb_exporter-0.10.0.linux-amd64*
 
 RUN sed -i "s/;http_port =.*/http_port = 8081/g" /etc/grafana/grafana.ini
 
-# pip3 dep
-# RUN pip3 install --no-cache-dir --upgrade \
-#     opencv-python==4.1.0.25 \
-#     gevent==20.9.0 \
-#     --index-url=https://mirrors.tencent.com/repository/pypi/tencent_pypi/simple \
-#     --extra-index-url=https://mirrors.tencent.com/pypi/simple
-
-# hok_env
-RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage && \
-    chmod u+x nvim.appimage && \
-    ./nvim.appimage --appimage-extract && \
-    cp -r ./squashfs-root/usr/ / && \
-    rm -r squashfs-root nvim.appimage && \
-    ln -sf /usr/bin/nvim /usr/bin/vim
-
-COPY hok_env /hok_env
-RUN pip3 install --no-cache-dir -e /hok_env
+# TODO hongyangqin move to base image
+RUN apt update && \
+    apt install -y lrzsz && \
+    rm -rf /var/lib/apt/lists/*
 
 # rl_framework
 COPY ./rl_framework/ /rl_framework/
@@ -35,20 +27,45 @@ RUN pip3 install --no-cache-dir --upgrade build && \
     cd /rl_framework/monitor && python3 -m build && \
     pip3 install --no-cache-dir dist/*.whl && rm -rf dist/
 
-# training code
-COPY ./aiarena/1v1/actor /aiarena/code/actor
-COPY ./aiarena/1v1/learner /aiarena/code/learner
-COPY ./aiarena/1v1/common /aiarena/code/common
-COPY ./aiarena/remote-gc-server /aiarena/remote-gc-server
-COPY ./aiarena/battle /aiarena/battle
-COPY ./aiarena/scripts /aiarena/scripts
+# hok_env
+COPY hok_env /hok_env
+RUN pip3 install --no-cache-dir -e /hok_env
 
-# monitor config
-COPY ./aiarena/1v1/common/monitor/dashboard/*.json /var/lib/grafana/dashboards/
-COPY ./aiarena/1v1/common/monitor/config/datasource.yaml /etc/grafana/provisioning/datasources/
-COPY ./aiarena/1v1/common/monitor/config/dashboard.yaml /etc/grafana/provisioning/dashboards/
+# training code
+COPY ./aiarena/remote-gc-server /rl_framework/remote-gc-server
+COPY ./aiarena/battle /aiarena/battle
+COPY ./aiarena/process /aiarena/process
+COPY ./aiarena/__init__.py /aiarena/
+COPY ./aiarena/scripts /aiarena/scripts
+COPY ./aiarena/grafana/etc /etc/grafana
+COPY ./aiarena/grafana/dashboards /var/lib/grafana/dashboards
 
 WORKDIR /
 
 ENV GAMECORE_SERVER_BIND_ADDR=:23432
 ENV GAMECORE_SERVER_ADDR="127.0.0.1:23432"
+
+# runtime /aiarena/code 3v3 dir
+FROM dev_base as code3v3
+COPY ./aiarena/3v3/actor /aiarena/code/actor
+COPY ./aiarena/3v3/learner /aiarena/code/learner
+
+# runtime /aiarena/code 5v5dld dir
+FROM dev_base as code5v5dld
+COPY ./aiarena/5v5dld/actor /aiarena/code/actor
+COPY ./aiarena/5v5dld/learner /aiarena/code/learner
+
+# runtime /aiarena/code 1v1 dir
+FROM dev_base as code1v1
+COPY ./aiarena/1v1/actor /aiarena/code/actor
+COPY ./aiarena/1v1/learner /aiarena/code/learner
+COPY ./aiarena/1v1/common /aiarena/code/common
+
+FROM dev_base as battle
+COPY ./aiarena/1v1/actor /aiarena/1v1/actor
+COPY ./aiarena/1v1/learner /aiarena/1v1/learner
+COPY ./aiarena/1v1/common /aiarena/1v1/common
+COPY ./aiarena/3v3/actor /aiarena/3v3/actor
+COPY ./aiarena/3v3/learner /aiarena/3v3/learner
+COPY ./aiarena/5v5dld/actor /aiarena/5v5dld/actor
+COPY ./aiarena/5v5dld/learner /aiarena/5v5dld/learner

@@ -6,6 +6,7 @@ import time
 import zmq
 
 from rl_framework.mem_pool.mem_pool_api.mem_pool_protocol import CmdType
+import rl_framework.common.logging as LOG
 
 
 class ZMQMEMPOOL(object):
@@ -15,6 +16,7 @@ class ZMQMEMPOOL(object):
         self.recv_pid = multiprocessing.Process(
             target=self.recv_data, args=(self.data_queue,)
         )
+        self.recv_pid.daemon = True
         self.recv_pid.start()
 
     def recv_data(self, queue):
@@ -28,7 +30,7 @@ class ZMQMEMPOOL(object):
             if time.time() - print_start_time > 30:
                 print_start_time = time.time()
                 if put_error_num != 0:
-                    print("queue put error: {}/min".format(put_error_num * 2))
+                    LOG.info("queue put error: {}/min".format(put_error_num * 2))
                     put_error_num = 0
 
             data = recv_socket.recv()

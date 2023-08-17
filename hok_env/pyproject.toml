@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hok"
-version = "1.2.1"
+version = "2.0.1"
 description = "Honor of Kings: A MOBA game environment for multi-agent reinforcement learning."
 requires-python = ">=3.6, <=3.9"
 
@@ -16,7 +16,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "requests"
+    "requests",
+    "numpy",
+    "loguru"
 ]
 
 [project.urls]

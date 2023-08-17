@@ -11,6 +11,7 @@ from rl_framework.learner.framework.common.config_control import ConfigControl
 from rl_framework.learner.framework.tensorflow.gradient_fusion import NodeInfo
 from rl_framework.learner.framework.common.log_manager import LogManager
 from rl_framework.learner.framework.tensorflow.model_manager import ModelManager
+import rl_framework.common.logging as LOG
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.client import timeline
 from tensorflow.python.util import nest
@@ -39,33 +40,25 @@ class Benchmark(object):
         model_manager: ModelManager,
         config_manager: ConfigControl,
         node_info: NodeInfo,
+        slow_time: float = 0.0,
     ):
         tf.logging.set_verbosity(tf.logging.ERROR)
-        try:
-            import horovod.tensorflow as hvd
-
-            hvd.init()
-            config_manager.reset_hvd_rank(
-                hvd.rank(), hvd.size(), hvd.local_rank(), hvd.local_size()
-            )
-        except:  # pylint: disable=broad-except
-            pass
-
         self.log_manager = log_manager
-        self.log_manager.print_info("init starting, backend=tensorflow")
+        LOG.info("init starting, backend=tensorflow")
         self.node_info = node_info
         self.config_manager = config_manager
 
         self.is_chief_rank = self.node_info.rank == 0
         self.graph = Graphs(network)
         self.dataset = Datasets(dataset)
+        self.slow_time = slow_time
         self.local_step = 0
         self.step_train_times = list()
         self.total_noise_scale = 0.0
         self.noise_scale_times = 0
         self.skip_update_times = 0
         self.model_manager = model_manager
-        self.log_manager.print_info("init finished")
+        LOG.info("init finished")
 
     def _build_model(self):
         with tf.device("/cpu:0"):
@@ -87,7 +80,7 @@ class Benchmark(object):
         local_var_init_op = tf.local_variables_initializer()
         local_save_model_secs = 0
 
-        self.log_manager.print_info("local_save_model_secs: %d" % local_save_model_secs)
+        LOG.info("local_save_model_secs: %d" % local_save_model_secs)
         self.sv = tf.train.Supervisor(
             is_chief=True,
             logdir=self.config_manager.train_dir,
@@ -107,9 +100,7 @@ class Benchmark(object):
         )
 
         if self.config_manager.use_init_model:
-            self.log_manager.print_info(
-                "restore_model from %s" % self.config_manager.init_model_path
-            )
+            LOG.info("restore_model from %s" % self.config_manager.init_model_path)
             self.model_manager.restore_model(
                 self.sess, self.config_manager.init_model_path
             )
@@ -127,13 +118,15 @@ class Benchmark(object):
             )
         self.sess.run(self.enqueue_ops)
         self.init_global_step = self.sess.run(self.global_step)
+        self.local_step = self.init_global_step
 
     def _do_train(self):
-
-        self.log_manager.print_info("Start training...")
+        LOG.info("Start training...")
         start_time = time.time()
         for _ in range(self.config_manager.warmup_steps, self.config_manager.max_steps):
             batch_begin = time.time()
+            if self.slow_time > 0:
+                time.sleep(self.slow_time)
             if (
                 self.is_chief_rank
                 and self.local_step == 100
@@ -183,16 +176,16 @@ class Benchmark(object):
                     self.config_manager.save_model_dir,
                     self.config_manager.send_model_dir,
                 )
-                self.log_manager.print_info(msg)
+                LOG.info(msg)
 
         images_per_sec = (
             (time.time() - start_time)
             / (self.config_manager.max_steps - self.config_manager.warmup_steps)
             * self.config_manager.batch_size
         )
-        self.log_manager.print_info("-" * 64)
-        self.log_manager.print_info("total images/sec: %.2f" % images_per_sec)
-        self.log_manager.print_info("-" * 64)
+        LOG.info("-" * 64)
+        LOG.info("total images/sec: %.2f" % images_per_sec)
+        LOG.info("-" * 64)
         # Save the model checkpoint.
         if self.is_chief_rank:
             self.model_manager.save_model(
@@ -215,7 +208,7 @@ class Benchmark(object):
 
     def get_sample_consume_speed(self, batch_size, step_train_times, scale=1):
         if not step_train_times:
-            return ""
+            return 0
         if len(step_train_times) <= 1:
             return step_train_times[0]
         times = np.array(step_train_times[1:])

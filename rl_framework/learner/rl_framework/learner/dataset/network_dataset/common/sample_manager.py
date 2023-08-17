@@ -6,6 +6,7 @@ import sys
 import time
 import numpy as np
 
+import rl_framework.common.logging as LOG
 
 """
 random repeat get sample
@@ -62,17 +63,17 @@ class MemBuffer(object):
             error_index += 1
             time.sleep(0.05)
             if error_index % 1000 == 0:
-                print(
-                    "[Debug] The sample is less than half the capacity {} {}".format(
+                LOG.info(
+                    "The sample is less than half the capacity {} {}".format(
                         self.__len__(), self._maxlen
                     )
                 )
         while self._len.value < 0:
             time.sleep(0.001)
-            print("[Debug] sample_num < 0 {}".format(self._len.value))
+            LOG.info("sample_num < 0 {}".format(self._len.value))
         i = random.randint(0, self.__len__() - 1)
         if i < 0 or i > self._maxlen:
-            print("[Debug] random index is illegal")
+            LOG.info("random index is illegal")
 
         with self._data_status[i].get_lock():
             nparray = np.frombuffer(self._data_queue, dtype=self._data_type)
@@ -124,7 +125,7 @@ class MemQueue(object):
             self._data_queue.put(data)
         except Exception:  # pylint: disable=broad-except
             error = sys.exc_info()[0]
-            print("MemQueue append error {}".format(error))
+            LOG.exception("MemQueue append error {}".format(error))
 
     def get_sample(self):
         return self._data_queue.get()

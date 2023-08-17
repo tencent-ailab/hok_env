@@ -1,1 +1,9 @@
-.git
+**/.git/
+**/*.egg-info/
+**/__pycache__/
+**/GameAiMgr_*.txt
+aiarena/checkpoints
+aiarena/logs
+aiarena/scripts/actor/learner.iplist.new
+aiarena/scripts/learner/learner.iplist.new
+aiarena/code

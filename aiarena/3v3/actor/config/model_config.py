@@ -3,7 +3,7 @@ import os
 
 
 class ModelConfig:
-    backend = "tensorflow"
+    backend = "pytorch"
     NETWORK_NAME = "network"
     HERO_NUM = 3
     LSTM_TIME_STEPS = 16

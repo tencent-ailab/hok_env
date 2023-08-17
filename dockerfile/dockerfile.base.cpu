@@ -5,4 +5,10 @@ FROM ${BASE_IMAGE} as cpu
 # tensorflow
 ARG TENSORFLOW_VERSION=1.15.5
 RUN pip3 install --no-cache-dir protobuf~=3.20 tensorflow==${TENSORFLOW_VERSION}
-RUN pip3 install --no-cache-dir torch
+RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+RUN apt update && \
+    apt install -y cmake libopenmpi-dev build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN HOROVOD_WITH_MPI=1 HOROVOD_WITH_PYTORCH=1 HOROVOD_WITH_TENSORFLOW=1 pip3 install --no-cache-dir horovod==0.28.1

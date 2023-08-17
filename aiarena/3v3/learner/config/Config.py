@@ -188,7 +188,7 @@ class Config:
         184: 4,
         501: 4,  # support
     }
-
+    slow_time = float(os.getenv("SLOW_TIME", "0").strip())
     INIT_LEARNING_RATE_START = 0.0006
     BETA_START = 0.008
     RMSPROP_DECAY = 0.9

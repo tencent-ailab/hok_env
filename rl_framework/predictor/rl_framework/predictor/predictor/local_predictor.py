@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 
 import tensorflow as tf
 
@@ -116,6 +117,6 @@ class LocalCkptPredictor(LocalTFPredictor):
         model_dir : str
             The path of checkpoint.
         """
-        ckpt_path = "%s/%s" % (model_path, self._ckpt_name)
+        ckpt_path = os.path.join(model_path, self._ckpt_name)
         self._saver.restore(self._sess, ckpt_path)
         return True

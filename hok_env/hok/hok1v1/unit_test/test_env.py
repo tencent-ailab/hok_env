@@ -69,29 +69,30 @@ def test_send_action(env, common_ai, eval, camp_config):
 
 
 if __name__ == "__main__":
-    from hok.hok1v1.battle import Battle
+    from hok.common.gamecore_client import GamecoreClient
     from hok.hok1v1.env1v1 import interface_default_config
+    from hok.hok1v1.hero_config import get_default_hero_config
     import hok.hok1v1.lib.interface as interface
 
     lib_processor = interface.Interface()
     lib_processor.Init(interface_default_config)
-    from hok.hok1v1.camp import camp_iterator
 
-    GC_SERVER_ADDR = os.getenv("GAMECORE_SERVER_ADDR", "127.0.0.1:23432")
     # please replace the *AI_SERVER_ADDR* with your ip address.
+    GC_SERVER_ADDR = os.getenv("GAMECORE_SERVER_ADDR", "127.0.0.1:23432")
     AI_SERVER_ADDR = os.getenv("AI_SERVER_ADDR", "127.0.0.1")
     gamecore_req_timeout = 3000
 
     print(GC_SERVER_ADDR, AI_SERVER_ADDR)
 
-    addrs = []
     AGENT_NUM = 2
+    addrs = []
     for i in range(AGENT_NUM):
-        addrs.append("tcp://0.0.0.0:{}".format(35400 + i))
+        addrs.append("tcp://0.0.0.0:{}".format(35150 + i))
 
-    game_launcher = Battle(
+    game_launcher = GamecoreClient(
         server_addr=GC_SERVER_ADDR,
         gamecore_req_timeout=gamecore_req_timeout,
+        default_hero_config=get_default_hero_config(),
     )
 
     env = HoK1v1(
@@ -102,7 +103,7 @@ if __name__ == "__main__":
         aiserver_ip=AI_SERVER_ADDR,
     )
 
-    from hok.hok1v1.camp import HERO_DICT, camp_iterator_1v1_roundrobin_camp_heroes
+    from hok.common.camp import HERO_DICT, camp_iterator_1v1_roundrobin_camp_heroes
 
     camp_iter = camp_iterator_1v1_roundrobin_camp_heroes(HERO_DICT.values())
     camp_config = next(camp_iter)

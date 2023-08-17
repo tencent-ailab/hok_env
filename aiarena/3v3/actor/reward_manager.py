@@ -8,10 +8,10 @@ class RewardManager:
     def __init__(self, gamma, lamda):
         self._gamma = gamma
         self._lamda = lamda
-        self.advantage = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        self.advantage = [[0.0] * 3 for _ in range(2)]
 
     def reset(self):
-        self.advantage = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        self.advantage = [[0.0] * 3 for _ in range(2)]
 
     @log_time("reward_process")
     def calc_advantage(
@@ -26,7 +26,7 @@ class RewardManager:
     ):
         frame_no = rl_info.frame_no
         # calc my final reward
-        my_final_reward = self.calc_final_reward(hero_idx, all_hero_reward_detail)
+        # my_final_reward = self.calc_final_reward(hero_idx, all_hero_reward_detail)
 
         # calc advantage and reward_sum
         # advantage: used for policy loss

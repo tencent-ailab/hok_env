@@ -3,215 +3,150 @@
     KingHonour Data production process
 """
 import os
-import traceback
-from collections import deque
 import time
 
-import numpy as np
-from config.config import Config
-
-from rl_framework.common.logging import g_log_time, log_time_func
+from rl_framework.common.logging import g_log_time, log_time, log_time_func
 import rl_framework.common.logging as LOG
 
-IS_TRAIN = Config.IS_TRAIN
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-OS_ENV = os.environ
-IS_DEV = OS_ENV.get("IS_DEV")
 
 
 class Actor:
-    """
-    used for sample logic
-        run 1 episode
-        save sample in sample manager
-    """
-
-    def __init__(self, id, agents, max_episode: int = 0, env=None, monitor_logger=None):
+    def __init__(
+        self,
+        id,
+        agents,
+        env,
+        sample_manager,
+        camp_iter,
+        max_episode=-1,
+        monitor_logger=None,
+        send_sample_frame=963,
+    ):
+        self.m_task_uuid = "TODO TASK_UUID"
         self.m_config_id = id
-        self.m_task_uuid = Config.TASK_UUID
-        self.m_steps = Config.STEPS
-        self.m_init_path = Config.INIT_PATH
-        self.m_update_path = Config.UPDATE_PATH
-        self.m_mem_pool_path = Config.MEM_POOL_PATH
-        self.m_task_name = Config.TASK_NAME
 
-        # self.m_replay_buffer = deque()
-        self.m_episode_info = deque(maxlen=100)
-        # self.m_ip = CommonFunc.get_local_ip()
+        self.agents = agents
         self.env = env
+        self.sample_manager = sample_manager
+        self.camp_iter = camp_iter
+
         self._max_episode = max_episode
+        self.monitor_logger = monitor_logger
+        self.send_sample_frame = send_sample_frame
 
-        self.m_run_step = 0
-        self.m_best_reward = 0
-
-        self._last_print_time = time.time()
         self._episode_num = 0
 
-        self.agents = agents
-        self.hero_num = 3
-        self.send_sample_frame = Config.SEND_SAMPLE_FRAME
-        self.monitor_logger = monitor_logger
-
-    def set_env(self, environment):
-        self.env = environment
-
-    def set_sample_managers(self, sample_manager):
-        self.m_sample_manager = sample_manager
-
-    def is_crystal_gameover(self, req_pb):
-        crystal_gameover = 0
-        for npc_state in req_pb.frame_state.npc_states:
-            if (
-                npc_state.actor_type == 2
-                and npc_state.sub_type == 24
-                and npc_state.hp <= 0
-            ):
-                crystal_gameover = 1
-                LOG.info(
-                    "Tower %d in camp %d, hp: %d"
-                    % (npc_state.sub_type, npc_state.camp, npc_state.hp)
-                )
-        return crystal_gameover
-
-    def set_agents(self, agents):
-        self.agents = agents
-
-    def _run_episode(self, eval=False, load_models=None, eval_info=""):
-        time.sleep(5)
-        for item in g_log_time.items():
-            g_log_time[item[0]] = []
-        # alias
-        sample_manager = self.m_sample_manager
-
-        done = False
+    @log_time("one_episode")
+    def _run_episode(self, camp_config):
+        LOG.info("Start a new game")
+        g_log_time.clear()
 
         log_time_func("reset")
-        log_time_func("one_episode")
         # swap two agents, and re-assign camp
         self.agents.reverse()
-        # first_frame_no = req_pb.frame_no
-        # state : game_id / hero_runtime_id(camp) / frame_no /
-        #
-        # game_id = state_dict_list[0]['game_id']
 
-        # swap two agents, and re-assign camp
-        # self.agents.reverse()
         for i, agent in enumerate(self.agents):
             LOG.debug("reset agent {}".format(i))
-            # camp = agent_camp[i]
-            if eval:
-                if load_models is None:
-                    agent.reset("common_ai")
-                else:
-                    if load_models[i] is None:
-                        agent.reset("common_ai")
-                    else:
-                        agent.reset("network", model_path=load_models[i])
-            else:
-                agent.reset(Config.ENEMY_TYPE)
+            agent.reset()
 
         # restart a new game
-        LOG.debug("reset env")
-        camp_game_id, is_gameover = self.env.reset(self.agents, eval_mode=eval)
-        first_time = True
+        use_common_ai = [agent.is_common_ai() for agent in self.agents]
+        self.env.reset(use_common_ai, camp_config)
         first_frame_no = -1
 
         # reset mem pool and models
-        LOG.debug("reset sample_manager")
-        sample_manager.reset(agents=self.agents, game_id=camp_game_id)
+        self.sample_manager.reset()
         log_time_func("reset", end=True)
-        game_info = {}
 
-        while not done:
+        game_info = {}
+        is_gameover = False
+        req_pb = None
+        while not is_gameover:
             log_time_func("one_frame")
 
-            if is_gameover:
-                break
-            pro_type = 0
+            continue_process = False
             # while True:
-            is_send = 0
+            is_send = False
             reward_camp = [[], []]
             all_hero_reward_camp = [[], []]
             for i, agent in enumerate(self.agents):
-                if agent.is_common_ai():
-                    LOG.info("agent %d is common_ai" % i)
+                if use_common_ai[i]:
+                    LOG.debug(f"agent {i} is common_ai")
                     continue
-                pro_type, features, req_pb = self.env.step_feature(i)
-                # print("frame_no: %d" %(req_pb.frame_no))
-                if pro_type == 0:
+
+                continue_process, features, p_game_data = self.env.step_feature(i)
+                req_pb = p_game_data.frame_state
+                if req_pb.gameover:
+                    game_info["length"] = req_pb.frame_no
+                    is_gameover = True
+
+                if not continue_process:
                     continue
-                if first_time:
+
+                if first_frame_no < 0:
                     first_frame_no = req_pb.frame_no
                     LOG.info("first_frame_no %d" % first_frame_no)
-                    first_time = False
 
-                for hero_idx in range(self.hero_num):
+                for hero_idx in range(len(features)):
                     reward_camp[i].append(features[hero_idx].reward)
                     all_hero_reward_camp[i].append(
                         features[hero_idx].all_hero_reward_info
                     )
 
                 sample = {}
-                if not req_pb.gameover:
-                    prob, lstm_info = agent.predict_process(features, req_pb)
-                    sample = self.env.step_action(prob, features, req_pb, i, lstm_info)
-                else:
-                    self.env._gameover(i)
+                probs, lstm_info = agent.predict_process(features, req_pb)
+                sample = self.env.step_action(
+                    i, features, probs, p_game_data, lstm_info
+                )
+
+                # skip save sample if not latest model
+                if not agent.is_latest_model:
+                    continue
 
                 is_send = req_pb.gameover or (
                     ((req_pb.frame_no - first_frame_no) % self.send_sample_frame == 0)
                     and (req_pb.frame_no > first_frame_no)
                 )
-                if agent.is_latest_model and not eval:
-                    if not is_send:
-                        sample_manager.save_sample(
-                            **sample,
+
+                if not is_send:
+                    self.sample_manager.save_sample(
+                        **sample, agent_id=i, uuid=self.m_task_uuid
+                    )
+                else:
+                    LOG.info(
+                        f"save_last_sample frame[{req_pb.frame_no}] req_pb.gameover[{req_pb.gameover}]"
+                    )
+                    if req_pb.gameover:
+                        self.sample_manager.save_last_sample(
                             agent_id=i,
-                            game_id=camp_game_id[i],
-                            uuid=self.m_task_uuid
+                            reward=reward_camp[i],
+                            all_hero_reward_s=all_hero_reward_camp[i],
+                            # TODO hongyangqin refactor reward_manager
                         )
                     else:
-                        LOG.info(
-                            "save_last_sample frame[%d] req_pb.gameover[%d]"
-                            % (
-                                req_pb.frame_no,
-                                req_pb.gameover,
-                            )
+                        self.sample_manager.save_last_sample(
+                            agent_id=i,
+                            reward=reward_camp[i],
+                            value_s=sample["value_s"],
+                            all_hero_reward_s=all_hero_reward_camp[i],
                         )
-                        if req_pb.gameover:
-                            sample_manager.save_last_sample(
-                                agent_id=i,
-                                reward=reward_camp[i],
-                                all_hero_reward_s=all_hero_reward_camp[i],
-                            )
-                        else:
-                            sample_manager.save_last_sample(
-                                agent_id=i,
-                                reward=reward_camp[i],
-                                value_s=sample["value_s"],
-                                all_hero_reward_s=all_hero_reward_camp[i],
-                            )
-            if pro_type == 0:
-                continue
 
-            if is_send:
-                if IS_TRAIN and not eval:
-                    LOG.info("send_sample and update model")
-                    sample_manager.send_samples()
-                    sample_manager.reset(agents=self.agents, game_id=camp_game_id)
-                    for i, agent in enumerate(self.agents):
-                        agent.update_model()
-                    LOG.info("send done.")
-                if req_pb.gameover:
-                    is_gameover = True
-                    done = True
-                    LOG.info("req_pb.gameover frame_no: %d" % (req_pb.frame_no))
+            if is_send or is_gameover:
+                LOG.info("send_sample and update model")
+                self.sample_manager.send_samples()
+                self.sample_manager.reset()
+                for i, agent in enumerate(self.agents):
+                    agent.update_model()
+                LOG.info("send_sample and update model done.")
         log_time_func("one_frame", end=True)
-        self.env.close_game(self.agents)
+        self.env.close_game()
 
-        game_info["length"] = req_pb.frame_no
+        if not req_pb:
+            return
+
+        # process game info
         loss_camp = None
-
         # update camp information.
         for organ in req_pb.organ_list:
             if organ.type == 24 and organ.hp <= 0:
@@ -229,15 +164,7 @@ class Actor:
             agent_win = 0
             if (loss_camp is not None) and (agent_camp != loss_camp):
                 agent_win = 1
-            if eval:
-                agent_model = load_models[i]
-                if agent_model == None:
-                    agent_model = "common_ai"
-                LOG.info(
-                    "camp%d_model:%s win:%d" % (agent_camp, agent_model, agent_win)
-                )
-            else:
-                LOG.info("camp%d_agent:%d win:%d" % (agent_camp, i, agent_win))
+            LOG.info("camp%d_agent:%d win:%d" % (agent_camp, i, agent_win))
 
             LOG.info("---------- camp%d hero_info ----------" % agent_camp)
             for hero_state in req_pb.hero_list:
@@ -301,124 +228,25 @@ class Actor:
             if self.monitor_logger:
                 self.monitor_logger.info(game_info)
 
-        log_time_func("one_episode", end=True)
-        # print game information
-        # self._print_info(game_id, game_info, episode_infos, eval, eval_info)
-
-    def _check_gamecore_state(self, state_dict_list):
-        all_key_right = True
-        key_list = ["feature", "camp_id"]
-        for key_name in key_list:
-            for state_dict in state_dict_list:
-                if key_name not in state_dict:
-                    all_key_right = False
-        return all_key_right
-
-    def _print_info(self, game_id, game_info, episode_infos, eval, eval_info=""):
-        # TODO: update this code, and add some details about reward.
-        if eval and len(eval_info) > 0:
-            LOG.info("eval_info: %s" % eval_info)
-        LOG.info("=" * 50)
-        LOG.info("game_id : %s" % game_id)
-        for item in g_log_time.items():
-            if len(item) <= 1 or len(item[1]) == 0 or len(item[0]) == 0:
-                continue
-            mean = np.mean(item[1])
-            max = np.max(item[1])
-            LOG.info(
-                "%s | mean:%s max:%s times:%s" % (item[0], mean, max, len(item[1]))
-            )
-            g_log_time[item[0]] = []
-        LOG.info("=" * 50)
-        for i, agent in enumerate(self.agents):
-            LOG.info(
-                "Agent is_main:{}, type:{}, camp:{},reward:{:.3f}, win:{}, h_act_rate:{}".format(
-                    agent.keep_latest and eval,
-                    agent.agent_type,
-                    agent.hero_camp,
-                    episode_infos[i]["reward"],
-                    episode_infos[i]["win"],
-                    1.0,
-                )
-            )
-            LOG.info(
-                "Agent is_main:{}, money_pre_frame:{:.2f}, kill:{}, death:{}, hurt_pf:{:.2f}".format(
-                    agent.keep_latest and eval,
-                    episode_infos[i]["money_pre_frame"],
-                    episode_infos[i]["kill"],
-                    episode_infos[i]["death"],
-                    episode_infos[i]["hurt_pre_frame"],
-                )
-            )
-        LOG.info("game info length:{}".format(game_info["length"]))
-
-        LOG.info("=" * 50)
-
-    def run(self, eval_mode=False, eval_number=-1, load_models=[]):
+    def run(self):
         self._last_print_time = time.time()
         self._episode_num = 0
         MAX_REPEAT_ERR_NUM = 2
         repeat_num = MAX_REPEAT_ERR_NUM
-        if eval_mode:
-            LOG.info("eval_mode start...")
-            agent_0, agent_1 = 0, 1
-            cur_models = [load_models[agent_0], load_models[agent_1]]
-            cur_eval_cnt = 1
-            swap = False
 
         while True:
             try:
-                # provide a init eval value at the first episode
-                if eval_mode:
-                    if swap:
-                        eval_info = "{} vs {}, {}/{}".format(
-                            agent_1, agent_0, cur_eval_cnt, eval_number
-                        )
-                    else:
-                        eval_info = "{} vs {}, {}/{}".format(
-                            agent_0, agent_1, cur_eval_cnt, eval_number
-                        )
-
-                    LOG.info(cur_models)
-                    LOG.info(eval_info)
-                    self._run_episode(True, load_models=cur_models, eval_info=eval_info)
-                    # swap camp
-                    cur_models.reverse()
-                    swap = not swap
-                else:
-                    # self._run_episode((self._episode_num+0) % Config.EVAL_FREQ == 0 and self.m_config_id == 0)
-                    self._run_episode(
-                        (self._episode_num + 0) % Config.EVAL_FREQ == 0
-                        and self.m_config_id == -1
-                    )
+                camp_config = next(self.camp_iter)
+                self._run_episode(camp_config)
                 self._episode_num += 1
                 repeat_num = MAX_REPEAT_ERR_NUM
             except Exception as e:
-                LOG.error(
+                LOG.exception(
                     "_run_episode err: {}/{}".format(repeat_num, MAX_REPEAT_ERR_NUM)
                 )
-                LOG.error(e)
-                traceback.print_tb(e.__traceback__)
                 repeat_num -= 1
                 if repeat_num == 0:
                     raise e
-
-            if eval_mode:
-                # update eval agents and eval cnt
-                cur_eval_cnt += 1
-                if cur_eval_cnt > eval_number:
-                    cur_eval_cnt = 1
-
-                    agent_1 += 1
-                    if agent_1 >= len(load_models):
-                        agent_0 += 1
-                        agent_1 = agent_0 + 1
-
-                    if agent_1 >= len(load_models):
-                        # eval end
-                        break
-
-                    cur_models = [load_models[agent_0], load_models[agent_1]]
 
             if 0 < self._max_episode <= self._episode_num:
                 break

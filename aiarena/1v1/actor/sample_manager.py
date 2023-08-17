@@ -3,33 +3,41 @@ import collections
 import random
 
 import numpy as np
-from common_config import Config, ModelConfig
 from rl_framework.common.logging import log_time
-from common_log import CommonLogger
 from rl_data_info import RLDataInfo
 
 from rl_framework.mem_pool import MemPoolAPIs
 
-LOG = CommonLogger.get_logger()
+import rl_framework.common.logging as LOG
 
 
 class SampleManager:
-    def __init__(self, mem_pool_addr, mem_pool_type, num_agents, game_id=None):
+    def __init__(
+        self,
+        mem_pool_addr_list,
+        mem_pool_type,
+        num_agents,
+        game_id=None,
+        single_test=False,
+        data_shapes=None,
+        lstm_time_steps=16,
+        gamma=0.995,
+        lamda=0.95,
+    ):
+        self.single_test = single_test
         # connect to mem pool
         # deal with multiple mem_pool, randomly select one to connect!
-        mem_pool_addr = mem_pool_addr.strip().split(";")
-        LOG.info("mempool list: {}".format(mem_pool_addr))
-        idx = random.randint(0, len(mem_pool_addr) - 1)
-        mem_pool_addr = mem_pool_addr[idx]
+        LOG.info("mempool list: {}".format(mem_pool_addr_list))
+        idx = random.randint(0, len(mem_pool_addr_list) - 1)
+        mem_pool_addr = mem_pool_addr_list[idx]
         LOG.info("connect to mempool: {}".format(mem_pool_addr))
         ip, port = mem_pool_addr.split(":")
         self.m_mem_pool_ip = ip
         self.m_mem_pool_port = port
-        print("Use mem_pool_addr", mem_pool_addr)
-        self._data_shapes = ModelConfig.data_shapes
-        self._LSTM_FRAME = ModelConfig.LSTM_TIME_STEPS
+        self._data_shapes = data_shapes
+        self._LSTM_FRAME = lstm_time_steps
 
-        if not Config.SINGLE_TEST:
+        if not self.single_test:
             self._mem_pool_api = MemPoolAPIs(
                 self.m_mem_pool_ip, self.m_mem_pool_port, socket_type=mem_pool_type
             )
@@ -42,8 +50,8 @@ class SampleManager:
         self.m_replay_buffer = [[] for _ in range(num_agents)]
 
         # load config from config file
-        self.gamma = Config.GAMMA
-        self.lamda = Config.LAMDA
+        self.gamma = gamma
+        self.lamda = lamda
 
         # self.sample_parse_lib = interface.SampleParse()
 
@@ -260,5 +268,5 @@ class SampleManager:
             samples = []
             for sample in self.m_replay_buffer[i]:
                 samples.append(self._add_extra_info(*sample))
-            if (not Config.SINGLE_TEST) and len(samples) > 0:
+            if (not self.single_test) and len(samples) > 0:
                 self._mem_pool_api.push_samples(samples)

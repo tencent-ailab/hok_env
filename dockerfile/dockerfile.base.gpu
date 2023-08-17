@@ -67,5 +67,8 @@ COPY --from=build_horovod /usr/lib/python3.8/site-packages/horovod /usr/lib/pyth
 COPY --from=build_horovod /usr/lib/python3.8/site-packages/horovod-0.25.0.dist-info /usr/lib/python3.8/site-packages/horovod-0.25.0.dist-info
 COPY --from=build_horovod /usr/bin/horovodrun /usr/bin/horovodrun
 
-RUN echo $(python3 -c "import os; import nvidia.nccl.lib; print(os.path.dirname(nvidia.nccl.lib.__file__))") > /etc/ld.so.conf.d/nccl.conf && ldconfig
+# nccl
+RUN echo $(python3 -c "import os; import nvidia.nccl.lib; print(nvidia.nccl.lib.__path__._path[0])") > /etc/ld.so.conf.d/nccl.conf && ldconfig
 
+# libcudart.so.11.0
+RUN echo $(python3 -c "import os; import nvidia.cuda_runtime.lib; print(nvidia.cuda_runtime.lib.__path__._path[0])") > /etc/ld.so.conf.d/cuda_runtime.conf && ldconfig

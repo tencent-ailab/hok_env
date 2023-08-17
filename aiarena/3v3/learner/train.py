@@ -27,7 +27,7 @@ def main(argv):
     if use_backend == "tensorflow":
         from rl_framework.learner.framework.tensorflow.model_manager import ModelManager
         from rl_framework.learner.dataset.network_dataset.tensorflow.network_dataset_zmq import (
-            NetworkDataset,
+            NetworkDataset as NetworkDatasetZMQ,
         )
         from rl_framework.learner.dataset.network_dataset.tensorflow.network_dataset_random import (
             NetworkDataset as NetworkDatasetRandom,
@@ -36,29 +36,35 @@ def main(argv):
         from rl_framework.learner.framework.tensorflow.gradient_fusion import NodeInfo
         from networkmodel.tensorflow.NetworkModel import NetworkModel
     elif use_backend == "pytorch":
-        from rl_framework.learner.framework.pytorch.node_info import NodeInfo
         from rl_framework.learner.framework.pytorch.model_manager import ModelManager
         from rl_framework.learner.dataset.network_dataset.pytorch.network_dataset_zmq import (
-            NetworkDataset,
+            NetworkDataset as NetworkDatasetZMQ,
         )
         from rl_framework.learner.dataset.network_dataset.pytorch.network_dataset_random import (
             NetworkDataset as NetworkDatasetRandom,
         )
         from rl_framework.learner.framework.pytorch.apd_benchmark import Benchmark
         from networkmodel.pytorch.NetworkModel import NetworkModel
+        distributed_backend = config_manager.distributed_backend
+        if distributed_backend == "horovod":
+            from rl_framework.learner.framework.pytorch.node_info_hvd import NodeInfo
+        else:
+            from rl_framework.learner.framework.pytorch.node_info_ddp import NodeInfo
     else:
         raise NotImplementedError(
             "Support backend in [pytorch, tensorflow], Check your training backend..."
         )
 
+    node_info = NodeInfo()
     adapter = OfflineRlInfoAdapter(Config.data_shapes)
     if FLAGS.single_test:
         dataset = NetworkDatasetRandom(config_manager, adapter)
         config_manager.push_to_modelpool = False
     else:
-        dataset = NetworkDataset(config_manager, adapter)
+        dataset = NetworkDatasetZMQ(
+            config_manager, adapter, port=config_manager.ports[node_info.local_rank]
+        )
 
-    node_info = NodeInfo()
     log_manager = LogManager()
     network = NetworkModel()
     model_manager = ModelManager(config_manager.push_to_modelpool)
@@ -69,6 +75,7 @@ def main(argv):
         model_manager,
         config_manager,
         node_info,
+        slow_time=Config.slow_time,
     )
     benchmark.run()
 

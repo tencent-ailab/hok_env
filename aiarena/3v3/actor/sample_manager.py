@@ -13,19 +13,12 @@ from rl_framework.mem_pool import MemPoolAPIs
 
 # import interface
 
-IS_CHECK = Config.IS_CHECK
-ACTION_DIM = Config.ACTION_DIM
-INPUT_DIM = Config.INPUT_DIM
-
 
 class SampleManager:
     def __init__(
         self,
         mem_pool_addr,
-        mem_pool_type,
         num_agents,
-        game_id=[None, None],
-        local_mode=False,
         single_test=False,
     ):
         self.single_test = single_test
@@ -39,19 +32,16 @@ class SampleManager:
         ip, port = mem_pool_addr.split(":")
         self.m_mem_pool_ip = ip
         self.m_mem_pool_port = port
-        self.mem_pool_type = mem_pool_type
 
-        if self.single_test or local_mode:
-            self.mem_pool_type = "zmq"
-        else:
+        if not self.single_test:
             self._mem_pool_api = MemPoolAPIs(
-                self.m_mem_pool_ip, self.m_mem_pool_port, socket_type=self.mem_pool_type
+                self.m_mem_pool_ip,
+                self.m_mem_pool_port,
+                socket_type="zmq",
             )
 
-        self.m_game_id = game_id
         self.m_task_id, self.m_task_uuid = ModelConfig.TASK_ID, ModelConfig.TASK_UUID
         self.num_agents = num_agents
-        self.agents = None
         self.rl_data_map = [collections.OrderedDict() for _ in range(num_agents)]
         self.m_replay_buffer = [[] for _ in range(num_agents)]
 
@@ -63,10 +53,8 @@ class SampleManager:
 
         self.reward_manager = RewardManager(self.gamma, self.lamda)
 
-    def reset(self, agents, game_id):
-        self.m_game_id = game_id
-        self.agents = agents
-        self.num_agents = len(agents)
+    def reset(self):
+        LOG.debug("reset sample_manager")
         self.rl_data_map = [collections.OrderedDict() for _ in range(self.num_agents)]
         self.m_replay_buffer = [[] for _ in range(self.num_agents)]
 
@@ -93,7 +81,6 @@ class SampleManager:
         agent_id,
         is_train,
         all_hero_reward_s,
-        game_id=None,
         uuid=None,
     ):
         """
@@ -103,9 +90,8 @@ class SampleManager:
         lstm_hidden = lstm_hidden.flatten()
         one_camp_data = []
         for hero_idx in range(self.hero_num):
-            reward = self._clip_reward(reward_s[hero_idx])
+            reward_s[hero_idx] = self._clip_reward(reward_s[hero_idx])
             rl_data_info = RLDataInfo()
-            # rl_data_info.game_id = struct.pack('%ss' % len(game_id), bytes(game_id, encoding='utf8'))
 
             value = value_s[hero_idx]
 
@@ -158,8 +144,9 @@ class SampleManager:
         self.rl_data_map[agent_id][frame_no] = one_camp_data
 
     def save_last_sample(
-        self, agent_id, reward, value_s=[0.0, 0.0, 0.0], all_hero_reward_s=None
+        self, agent_id, reward, value_s=None, all_hero_reward_s=None
     ):
+        value_s = value_s or [0.0] * 3
         if len(self.rl_data_map[agent_id]) > 0:
             # TODO: is_action_executed, last_gamecore_act
             for hero_idx in range(self.hero_num):
@@ -374,41 +361,7 @@ class SampleManager:
             reward = min
         return reward
 
-    # send game info like: ((size, data))*5:
-    # [task_id: int, task_uuid: str, game_id: str, frame_no: int, real_data: data in str]
-
-    def _add_extra_info_mcp(self, frame_no, sample, agent_id):
-        sample_str = sample.astype("float16").tostring()
-
-        # pref = interface.sample_prefix(self.m_task_id, self.m_task_uuid, self.m_game_id, frame_no, len(sample_str))
-        pref = struct.pack("<III", 4, self.m_task_id, len(self.m_task_uuid)) + bytes(
-            self.m_task_uuid, encoding="utf8"
-        )
-        pref = (
-            pref
-            + struct.pack(
-                "<I",
-                len(self.m_game_id[agent_id]),
-            )
-            + self.m_game_id[agent_id]
-        )
-        pref = pref + struct.pack("<III", 4, frame_no, len(sample_str))
-
-        full_sample_str = pref + sample_str
-        # print("sample extra info", len(pref[1]), len(sample_str), len(full_sample_str), len(self.m_task_uuid), len(self.m_game_id))
-        # print("sample check!")
-        # print(self.sample_parse_lib.toSampleCheck(full_sample_str, len(full_sample_str), "123", 0, "123"))
-
-        return full_sample_str
-
-    def _add_extra_info(self, frame_no, sample, agent_id):
-        LOG.debug("agent %d  game_id: %s " % (agent_id, self.m_game_id[agent_id]))
-        if self.mem_pool_type == "mcp++":
-            return self._add_extra_info_mcp(frame_no, sample, agent_id)
-        else:
-            return self._add_extra_info_zmq(frame_no, sample, agent_id)
-
-    def _add_extra_info_zmq(self, frame_no, sample, agent_id):
+    def _add_extra_info(self, frame_no, sample):
         return sample.astype(np.float32).tobytes()
 
     def _send_game_data(self):
@@ -417,7 +370,7 @@ class SampleManager:
             #    continue
             samples = []
             for sample in self.m_replay_buffer[i]:
-                samples.append(self._add_extra_info(*sample, agent_id=i))
+                samples.append(self._add_extra_info(*sample))
             if (not self.single_test) and len(samples) > 0:
                 LOG.info("SendSample agent_id:%d sample_size:%d" % (i, len(samples)))
                 self._mem_pool_api.push_samples(samples)

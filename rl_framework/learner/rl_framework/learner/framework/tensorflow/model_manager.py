@@ -4,7 +4,7 @@ import os
 from multiprocessing import Process, Queue
 
 import tensorflow as tf
-from tensorflow.python.platform import gfile
+import rl_framework.common.logging as LOG
 
 
 class ModelManager(object):
@@ -21,6 +21,7 @@ class ModelManager(object):
         if self._push_to_modelpool:
             self.model_queue = Queue(maxsize=100)
             pid = Process(target=self._push_to_model_pool, args=())
+            pid.daemon = True
             pid.start()
 
     def init_saver(self):
@@ -32,8 +33,8 @@ class ModelManager(object):
             name = variable.name
             if (
                 name.startswith("input_datas")
-                or "global_step" in name
                 or "tower_0" in name
+                # or "global_step" in name
             ):
                 continue
             else:
@@ -53,8 +54,7 @@ class ModelManager(object):
                 f_out.write("weights: " + str(var) + "\n")
 
     def restore_model(self, sess, model_path="./model/init"):
-        ckpt = tf.train.get_checkpoint_state(model_path)
-        model_checkpoint_path = ckpt.model_checkpoint_path
+        model_checkpoint_path = os.path.join(model_path, "model.ckpt")
         self.saver.restore(sess, model_checkpoint_path)
 
     def save_model(self, sess, save_dir, send_dir):
@@ -100,7 +100,7 @@ class ModelManager(object):
         while True:
             model_path = self.model_queue.get()
             if not os.path.exists(model_path):
-                print("[model manager] {} not exists!!".format(model_path))
+                LOG.info("[model manager] {} not exists!!".format(model_path))
             else:
                 with open(model_path, "rb") as fin:
                     model = fin.read()

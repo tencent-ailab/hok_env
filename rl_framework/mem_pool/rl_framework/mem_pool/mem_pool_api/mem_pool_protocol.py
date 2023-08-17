@@ -3,6 +3,8 @@ import socket
 from enum import Enum
 import lz4.block
 
+import rl_framework.common.logging as LOG
+
 
 class SamplingStrategy(Enum):
     MIN = 0
@@ -51,7 +53,7 @@ class MemPoolProtocol:
                 if len(data) > 12:
                     sample = data[12:]
         except Exception:  # pylint: disable=broad-except
-            print("parse data error")
+            LOG.exception("parse data error")
 
         return total, seq, cmd, sample
 
@@ -103,7 +105,7 @@ class MemPoolProtocol:
                 if len(data) > 8:
                     sample = data[8:]
         except Exception:  # pylint: disable=broad-except
-            print("parse data error")
+            LOG.exception("parse data error")
 
         return total, seq, sample
 

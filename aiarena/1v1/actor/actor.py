@@ -3,19 +3,14 @@
     KingHonour Data production process
 """
 import os
-import traceback
 import time
-import json
+import traceback
 
-from collections import deque
 import numpy as np
-from common_config import Config
-from common_log import CommonLogger
 from rl_framework.common.logging import log_time_func, g_log_time
+import rl_framework.common.logging as LOG
 
 
-IS_TRAIN = Config.IS_TRAIN
-LOG = CommonLogger.get_logger()
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 OS_ENV = os.environ
 IS_DEV = OS_ENV.get("IS_DEV")
@@ -37,15 +32,19 @@ class Actor:
         env=None,
         monitor_logger=None,
         camp_iter=None,
+        is_train=True,
+        enemy_type="network",
     ):
         self.m_config_id = id
-        self.m_task_uuid = Config.TASK_UUID
+        self.m_task_uuid = "TODO TASK_UUID"
         self.env = env
         self._max_episode = max_episode
         self._episode_num = 0
         self.agents = agents
         self.monitor_logger = monitor_logger
         self.camp_iter = camp_iter
+        self.is_train = is_train
+        self.enemy_type = enemy_type
 
     def upload_monitor_data(self, data: dict):
         if self.monitor_logger:
@@ -85,9 +84,9 @@ class Actor:
                         agent.reset("network", model_path=load_models[i])
             else:
                 if len(load_models) == 1 and not agent.keep_latest:
-                    agent.reset(Config.ENEMY_TYPE, model_path=load_models[0])
+                    agent.reset(self.enemy_type, model_path=load_models[0])
                 else:
-                    agent.reset(Config.ENEMY_TYPE)
+                    agent.reset(self.enemy_type)
 
     def _save_last_sample(self, done, eval, sample_manager, state_dict):
         if done:
@@ -196,8 +195,6 @@ class Actor:
             )
             step += 1
             done = d[0] or d[1]
-            if req_pb.gameover:
-                print("really gameover!!!")
 
             self._save_last_sample(done, eval, sample_manager, state_dict)
             log_time_func("one_frame", end=True)
@@ -231,6 +228,7 @@ class Actor:
                     )
                     episode_infos[i]["kill"] = hero_state.killCnt
                     episode_infos[i]["death"] = hero_state.deadCnt
+                    episode_infos[i]["assistCnt"] = hero_state.assistCnt
                     episode_infos[i]["hurt_per_frame"] = (
                         hero_state.totalHurt / game_info["length"]
                     )
@@ -251,7 +249,7 @@ class Actor:
             episode_infos[i]["reward"] = np.sum(rewards[i])
             episode_infos[i]["h_act_rate"] = episode_infos[i]["h_act_num"] / step
 
-        if IS_TRAIN and not eval:
+        if self.is_train and not eval:
             LOG.debug("send sample_manager")
             sample_manager.send_samples()
             LOG.debug("send done.")
@@ -306,56 +304,43 @@ class Actor:
                 self.upload_monitor_data(
                     {
                         "reward": episode_infos[i]["reward"],
-                    }
-                )
-                self.upload_monitor_data(
-                    {
                         "win": episode_infos[i]["win"],
-                    }
-                )
-                self.upload_monitor_data(
-                    {
                         "hurt_per_frame": episode_infos[i]["hurt_per_frame"],
-                    }
-                )
-                self.upload_monitor_data(
-                    {
                         "money_per_frame": episode_infos[i]["money_per_frame"],
-                    }
-                )
-                self.upload_monitor_data(
-                    {
-                        "money_per_frame": episode_infos[i]["money_per_frame"],
-                    }
-                )
-                self.upload_monitor_data(
-                    {
                         "totalHurtToHero": episode_infos[i]["totalHurtToHero"],
+                        "kill": episode_infos[i]["kill"],
+                        "death": episode_infos[i]["death"],
+                        "assistCnt": episode_infos[i]["assistCnt"],
+                        "hurtH_per_frame": episode_infos[i]["hurtH_per_frame"],
+                        "hurtBH_per_frame": episode_infos[i]["hurtBH_per_frame"],
+                        "win": episode_infos[i]["win"],
+                        "length": game_info["length"],
                     }
                 )
         LOG.info("game info length:{}".format(game_info["length"]))
 
         LOG.info("=" * 50)
 
-    def run(self, load_models=None):
+    def run(self, load_models=None, eval_freq=5):
 
         self._episode_num = 0
 
         while True:
             camp_config = next(self.camp_iter)
             try:
+                self._episode_num += 1
                 # provide a init eval value at the first episode
                 eval_with_common_ai = (
-                    self._episode_num + 0
-                ) % Config.EVAL_FREQ == 0 and self.m_config_id == 0
+                    self.m_config_id == 0 and self._episode_num % eval_freq == 0
+                )
 
                 self._run_episode(
                     camp_config, eval_with_common_ai, load_models=load_models
                 )
-                self._episode_num += 1
             except Exception as e:  # pylint: disable=broad-except
                 LOG.error(e)
                 traceback.print_exc()
+                time.sleep(1)
 
             if 0 < self._max_episode <= self._episode_num:
                 break

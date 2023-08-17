@@ -1,20 +1,17 @@
 #!/bin/bash
 
-function log(){
-  now=`date +"%Y-%m-%d %H:%M:%S"`
-  echo "[$now] $1"
+function log() {
+    now=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "[$now] $1"
 }
 
 ############################
-CPU_NUM=${CPU_NUM:-"2"}
-mem_pool_num=${mem_pool_num:-"1"}
 MODEL_POOL_PKG_DIR=${MODEL_POOL_PKG_DIR:-"/rl_framework/model_pool/pkg/model_pool_pkg/"}
 LOG_DIR="/aiarena/logs/actor/"
-ACTOR_CODE_DIR=${ACTOR_CODE_DIR:-"/aiarena/code/actor"}
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 input_learner_list=${input_learner_list:-"${SCRIPT_DIR}/learner.iplist"}
-learner_list=${learner_list:-"${SCRIPT_DIR}/learner.iplist.new"}
+export learner_list=${learner_list:-"${SCRIPT_DIR}/learner.iplist.new"}
 
 mkdir -p ${LOG_DIR}
 
@@ -39,45 +36,16 @@ done
 
 ############################
 if [ -z "$NO_ACTOR_MODEL_POOL" ]; then
-  log "start model_pool"
-  cd ${MODEL_POOL_PKG_DIR}/op; bash stop.sh; bash start.sh cpu ${learner_list} ${LOG_DIR}
+    log "start model_pool"
+    master_ip=$(head -n 1 ${learner_list} | awk '{print $1}')
+    cd ${MODEL_POOL_PKG_DIR}/op && bash stop.sh && bash start.sh cpu $master_ip $LOG_DIR
+fi
+
+if [ "$DEPLOY_GAMECORE" = "1" ]; then
+    sh /rl_framework/remote-gc-server/start_gamecore_server.sh
 fi
 
 ############################
-log "parse mem pool"
-let end_num=mem_pool_num-1
-idx=0
-mem_pool_addr=""
-while read ip user port gpu_card_num;do
-    for i in `seq 0 $end_num`
-    do
-        let port=35200+$i
-        log "mem_pool_$idx $ip:$port"
-        if [ $idx -eq 0 ]
-        then
-            mem_pool_addr="$ip:$port"
-        else
-            mem_pool_addr="${mem_pool_addr};$ip:$port"
-        fi
-        let idx+=1
-    done
-done < $learner_list
-log ${mem_pool_addr}
-
-monitor_server_addr=`cat ${learner_list} |head -n 1|awk '{print $1}'`:8086
-log "monitor_server_addr: $monitor_server_addr"
-
-############################
-MAX_EPISODE=${MAX_EPISODE-"-1"}
 log "start actor"
 bash ${SCRIPT_DIR}/kill.sh
-cd ${ACTOR_CODE_DIR}
-let actor_num=CPU_NUM-1
-for i in $(seq 0 $actor_num); do
-    nohup python entry.py --actor_id=$i \
-                          --mem_pool_addr=$mem_pool_addr \
-                          --model_pool_addr="localhost:10016" \
-                          --max_episode=${MAX_EPISODE} \
-                          --monitor_server_addr=${monitor_server_addr} \
-                          >> ${LOG_DIR}/actor_$i.log 2>&1 &
-done;
+nohup bash ${SCRIPT_DIR}/monitor_actor.sh >>${LOG_DIR}/monitor.log 2>&1 &

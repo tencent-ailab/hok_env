@@ -1,10 +1,8 @@
 import random
+import time
 import h5py
 import numpy as np
-
-from rl_framework.predictor.predictor.local_predictor import (
-    LocalCkptPredictor as LocalPredictor,
-)
+import os
 
 from rl_framework.predictor.utils import (
     cvt_tensor_to_infer_input,
@@ -13,7 +11,6 @@ from rl_framework.predictor.utils import (
 from rl_framework.model_pool import ModelPoolAPIs
 
 from rl_framework.common.logging import log_time
-from common_config import ModelConfig, Config
 import rl_framework.common.logging as LOG
 from hok.hok1v1.agent import AgentBase
 
@@ -37,42 +34,39 @@ class RandomAgent:
 
 
 class Agent(AgentBase):
-    HERO_ID_INDEX_DICT = {
-        112: 0,
-        121: 1,
-        123: 2,
-        131: 3,
-        132: 4,
-        133: 5,
-        140: 6,
-        141: 7,
-        146: 8,
-        150: 9,
-        154: 10,
-        157: 11,
-        163: 12,
-        169: 13,
-        175: 14,
-        182: 15,
-        193: 16,
-        199: 17,
-        502: 18,
-        513: 19,
-    }
-
     def __init__(
         self,
-        model_cls,
+        model,
         model_pool_addr,
+        config,
         keep_latest=False,
         dataset=None,
+        single_test=False,
     ):
         super().__init__()
-        self.model = model_cls()
-        self.graph = self.model.build_infer_graph()
+        self.config = config
+        self.model = model
+        self.single_test = single_test
 
-        self._predictor = LocalPredictor(self.graph)
-        if Config.SINGLE_TEST:
+        if self.config.backend == "pytorch":
+            from rl_framework.predictor.predictor.local_torch_predictor import (
+                LocalTorchPredictor as LocalPredictor,
+            )
+
+            self._predictor = LocalPredictor(self.model)
+        elif self.config.backend == "tensorflow":
+            from rl_framework.predictor.predictor.local_predictor import (
+                LocalCkptPredictor as LocalPredictor,
+            )
+
+            self.graph = self.model.build_infer_graph()
+            self._predictor = LocalPredictor(self.graph)
+        else:
+            raise NotImplementedError(
+                "SINGLE_TEST: backend not in [tensorflow, pytorch]..."
+            )
+
+        if single_test or not model_pool_addr:
             self._model_pool_api = None
         else:
             self._model_pool_api = ModelPoolAPIs(model_pool_addr)
@@ -82,7 +76,7 @@ class Agent(AgentBase):
         self.keep_latest = keep_latest
         self.model_list = []
 
-        self.lstm_unit_size = ModelConfig.LSTM_UNIT_SIZE
+        self.lstm_unit_size = self.config.LSTM_UNIT_SIZE
 
         self.lstm_hidden = None
         self.lstm_cell = None
@@ -91,14 +85,14 @@ class Agent(AgentBase):
         self.player_id = 0
         self.hero_camp = 0
         self.last_model_path = None
-        self.label_size_list = ModelConfig.LABEL_SIZE_LIST
-        self.legal_action_size = ModelConfig.LEGAL_ACTION_SIZE_LIST
+        self.label_size_list = self.config.LABEL_SIZE_LIST
+        self.legal_action_size = self.config.LEGAL_ACTION_SIZE_LIST
 
         # self.agent_type = "network"
         if self.keep_latest:
             self.agent_type = "network"
         else:
-            self.agent_type = Config.ENEMY_TYPE
+            self.agent_type = self.config.ENEMY_TYPE
 
         if dataset is None:
             self.save_h5_sample = False
@@ -126,9 +120,17 @@ class Agent(AgentBase):
                 self.agent_type = agent_type
 
         # for test without model pool
-        if Config.SINGLE_TEST:
+        if self.single_test:
             self.is_latest_model = True
-            self._predictor._sess.run(self.model.init)
+            if self.config.backend == "tensorflow":
+                LOG.info("SINGLE_TEST: backend=tensorflow")
+                self._predictor._sess.run(self.model.init)
+            elif self.config.backend == "pytorch":
+                LOG.info("SINGLE_TEST: backend=pytorch")
+            else:
+                raise NotImplementedError(
+                    "SINGLE_TEST: backend not in [tensorflow, pytorch]..."
+                )
         else:
             if model_path is None:
                 while True:
@@ -142,6 +144,7 @@ class Agent(AgentBase):
                     except Exception as e:  # pylint: disable=broad-except
                         LOG.error(e)
                         LOG.error("get_model error, try again...")
+                        time.sleep(1)
             else:
                 if model_path != self.last_model_path:
                     self._predictor.load_model(model_path)
@@ -159,12 +162,10 @@ class Agent(AgentBase):
             self.dataset = h5py.File(self.dataset_name, "a")
 
     def _update_model_list(self):
-        import time
-
         model_key_list = []
         while len(model_key_list) == 0:
             model_key_list = self._model_pool_api.pull_keys()
-            if model_key_list is None:
+            if not model_key_list:
                 LOG.warning("No model in model_pool, wait for 1 sec...")
                 time.sleep(1)
         self.model_list = model_key_list
@@ -185,7 +186,16 @@ class Agent(AgentBase):
     def _get_random_model(self):
         if self.agent_type in ["common_ai", "random"]:
             self.is_latest_model = False
-            self._predictor._sess.run(self.model.init)
+            if self.config.backend == "tensorflow":
+                self._predictor._sess.run(self.model.init)
+                LOG.info("_get_random_model: backend=tensorflow")
+            elif self.config.backend == "pytorch":
+                LOG.info("_get_random_model: backend=pytorch")
+            else:
+                raise NotImplementedError(
+                    "_get_random_model: backend not in [tensorflow, pytorch]..."
+                )
+
             self.model_version = ""
             return True
 
@@ -206,47 +216,36 @@ class Agent(AgentBase):
         self.is_latest_model = True
         return self._load_model(self.model_list[-1])
 
+    def feature_post_process(self, state_dict):
+        return state_dict
+
     # handle the obs from gamecore, return action result
     @log_time("aiprocess_process")
     def process(self, state_dict, battle=False):
-
-        runtime_id = state_dict["player_id"]
-        hero_id = None
-        for hero in state_dict["req_pb"].hero_list:
-            if hero.runtime_id == runtime_id:
-                hero_id = hero.config_id
-
-        if hero_id is None:
-            raise Exception("can not find config_id for runtime_id")
-
-        hero_id_vec = np.zeros(
-            [
-                len(self.HERO_ID_INDEX_DICT),
-            ],
-            dtype=np.float,
-        )
-        if self.HERO_ID_INDEX_DICT.get(hero_id) is not None:
-            hero_id_vec[self.HERO_ID_INDEX_DICT[hero_id]] = 1
-        else:
-            LOG.warning("Unknown hero_id for network: %s" % hero_id)
-        state_dict["observation"] = np.concatenate(
-            (state_dict["observation"], hero_id_vec), axis=0
-        )
+        # call custom feature process (python)
+        state_dict = self.feature_post_process(state_dict)
 
         feature_vec, legal_action = (
             state_dict["observation"],
             state_dict["legal_action"],
         )
 
-        pred_ret = self._predict_process(feature_vec, legal_action)
+        if self.config.backend == "pytorch":
+            pred_ret = self._predict_process_torch(feature_vec, legal_action)
+        elif self.config.backend == "tensorflow":
+            pred_ret = self._predict_process(feature_vec, legal_action)
+        else:
+            raise NotImplementedError(
+                "SINGLE_TEST: backend not in [tensorflow, pytorch]..."
+            )
         _, _, action, d_action = pred_ret
         if battle:
             return d_action
         return action, d_action, self._sample_process(state_dict, pred_ret)
 
     def _update_legal_action(self, original_la, actions):
-        target_size = ModelConfig.LABEL_SIZE_LIST[-1]
-        top_size = ModelConfig.LABEL_SIZE_LIST[0]
+        target_size = self.config.LABEL_SIZE_LIST[-1]
+        top_size = self.config.LABEL_SIZE_LIST[0]
         original_la = np.array(original_la)
         fix_part = original_la[: -target_size * top_size]
         target_la = original_la[-target_size * top_size :]
@@ -392,8 +391,27 @@ class Agent(AgentBase):
         output_list = self._predictor.inference(
             input_list=input_list, output_list=output_list
         )
-        # cvt output dataxz
+        # cvt output data
         np_output = cvt_infer_list_to_numpy_list(output_list)
+
+        logits, value, self.lstm_cell, self.lstm_hidden = np_output[:4]
+
+        prob, action, d_action = self._sample_masked_action(logits, legal_action)
+
+        return prob, value, action, d_action  # prob: [[ ]], others: all 1D
+
+    def _predict_process_torch(self, feature, legal_action):
+        # put data to input
+        input_list = []
+        input_list.append(np.array(feature))
+        input_list.append(np.array(legal_action))
+        input_list.append(self.lstm_cell)
+        input_list.append(self.lstm_hidden)
+
+        output_list = self._predictor.inference(input_list)
+        np_output = []
+        for output in output_list:
+            np_output.append(output.numpy())
 
         logits, value, self.lstm_cell, self.lstm_hidden = np_output[:4]
 

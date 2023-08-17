@@ -5,7 +5,8 @@ import math
 import os
 import time
 
-LOG_FN = logging.getLogger("main").debug
+import rl_framework.common.logging as LOG
+
 from rl_framework.learner.framework.common import *
 from rl_framework.monitor import InfluxdbMonitorHandler
 
@@ -13,47 +14,21 @@ from rl_framework.monitor import InfluxdbMonitorHandler
 class LogManagerBase(object):
     def __init__(
         self,
-        train_log="/aiarena/logs/learner/train.log",
         loss_file_path="/aiarena/logs/learner/loss.txt",
         backend="tensorflow",
     ):
         self.backend = backend
-        # create logger
-        logger = logging.getLogger("main")
-        logger.setLevel(logging.DEBUG)
-
-        # set formatter
-        formatter = logging.Formatter(
-            fmt="%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-
         # set file handler: file rotates with time
-        os.makedirs(os.path.dirname(train_log), exist_ok=True)
         os.makedirs(os.path.dirname(loss_file_path), exist_ok=True)
-        rf_handler = logging.handlers.TimedRotatingFileHandler(
-            filename=train_log,
-            when="H",
-            interval=12,
-            backupCount=1,
-        )
-        rf_handler.setLevel(logging.DEBUG)
-        rf_handler.setFormatter(formatter)
-
-        # set console handler: display on the console
-        console = logging.StreamHandler()
-        console.setLevel(logging.ERROR)
-        console.setFormatter(formatter)
 
         # monitor logger
         self.monitor_logger = logging.getLogger("monitor")
         self.monitor_logger.setLevel(logging.INFO)
+
         monitor_handler = InfluxdbMonitorHandler("127.0.0.1")
         monitor_handler.setLevel(logging.INFO)
         self.monitor_logger.addHandler(monitor_handler)
 
-        logger.addHandler(rf_handler)
-        logger.addHandler(console)
         self.loss_writer = open(loss_file_path, "wt")
         self.total_noise_scale = 0.0
 
@@ -82,7 +57,7 @@ class LogManagerBase(object):
         self.total_noise_scale += noise_scale
         noise_scale_mean = self.total_noise_scale / float(local_step)
         log_str += " mean noise scale = %f" % (noise_scale_mean)
-        LOG_FN(log_str)
+        LOG.info(log_str)
 
         monitor_data = {}
         monitor_data["step"] = int(local_step)
@@ -119,7 +94,7 @@ class LogManagerBase(object):
             log_str = "train_has_inf_nan of step %i:  " % local_step
             for info in results["train_has_inf_nan"]:
                 log_str += "%s, " % str(info)
-            LOG_FN(log_str)
+            LOG.info(log_str)
 
         if "info_list" in results.keys():
             self._write_loss_log(results)
@@ -130,7 +105,7 @@ class LogManagerBase(object):
             if not math.isnan(val) and not math.isinf(val):
                 data[key] = val
         except Exception as e:
-            LOG_FN("add val failed: %s, %s (%s)" % (key, val, e))
+            LOG.info("add val failed: %s, %s (%s)" % (key, val, e))
 
     def _write_loss_log(self, results):
         local_step = results["step"]
@@ -150,9 +125,6 @@ class LogManagerBase(object):
                 loss_log[key] = float(val)
         self.loss_writer.write(json.dumps(loss_log) + "\n")
         self.loss_writer.flush()
-
-    def print_info(self, info):
-        LOG_FN(info)
 
     def upload_monitor_data(self, data: dict):
         self.monitor_logger.info(data)

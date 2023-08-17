@@ -9,10 +9,11 @@ from rl_framework.learner.dataset.network_dataset.common.batch_process import (
 from rl_framework.learner.dataset.network_dataset import NetworkDatasetBase
 from rl_framework.learner.dataset.network_dataset.common.sample_manager import MemBuffer
 from rl_framework.mem_pool.zmq_mem_pool_server.zmq_mem_pool import ZMQMEMPOOL
+import rl_framework.common.logging as LOG
 
 
 class NetworkDataset(NetworkDatasetBase):
-    def __init__(self, config_manager, adapter):
+    def __init__(self, config_manager, adapter, port=35200):
         self.max_sample = config_manager.max_sample
         self.batch_size = config_manager.batch_size
         self.data_shapes = adapter.get_data_shapes()
@@ -23,7 +24,6 @@ class NetworkDataset(NetworkDatasetBase):
         else:
             self.data_size = 4 * int(self.data_shapes[0][0])
             self.data_type = tf.float32
-        self.init_index = config_manager.hvd_local_rank
         self.adapter = adapter
         self.membuffer = MemBuffer(
             config_manager.max_sample, self.data_shapes[0][0], self.use_fp16
@@ -36,8 +36,7 @@ class NetworkDataset(NetworkDatasetBase):
             self.use_fp16,
         )
 
-        server_ports = config_manager.ports
-        self.port = server_ports[self.init_index]
+        self.port = port
         self.zmq_mem_pool = ZMQMEMPOOL(self.port)
         self.init_dataset = False
 
@@ -85,9 +84,9 @@ class NetworkDataset(NetworkDatasetBase):
         return [self.iterator.get_next()]
 
     def enqueue_data(self, process_index):
-        print(
-            "sample process learner_index:{} process_index:{} pid:{}".format(
-                self.init_index, process_index, os.getpid()
+        LOG.info(
+            "sample process port:{} process_index:{} pid:{}".format(
+                self.port, process_index, os.getpid()
             )
         )
         while True:

@@ -413,7 +413,6 @@ class Config:
     MEM_PROCESS_NUM = 8
     DATA_KEYS = "input_data"
     KEY_TYPES = "tf.float32"
-    ACTION_DIM = 79
     SERVER_PORT = 30166
     ACTOR_NUM = 0
     LEARNER_NUM = 0
@@ -424,14 +423,10 @@ class Config:
     INIT_PATH = "../model/init"
     MEM_POOL_PATH = "./config/mem_pool.host_list"
     TASK_UUID = "123"
-    IS_TRAIN = True
-    IS_CHECK = False
 
-    ENEMY_TYPE = "network"
     ENV_RULE = "none"
     EVAL_FREQ = 10
 
     # kinghonour_dqn
     DATA_SHAPES = [[5888]]
     DATA_SPLIT_SHAPE = [2823, 79, 2823, 79, 1, 1, 1, 1, 79, 1]
-    INPUT_DIM = [2823]

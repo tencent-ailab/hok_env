@@ -1,7 +1,9 @@
-import datetime
 import hashlib
 import os
+import torch
+import datetime
 from multiprocessing import Process, Queue
+import rl_framework.common.logging as LOG
 
 
 class ModelManager(object):
@@ -14,10 +16,16 @@ class ModelManager(object):
             remote_addrs = ["127.0.0.1:10013:10014"]
         self.remote_addrs = remote_addrs
         self._push_to_modelpool = push_to_modelpool
+        self.load_optimizer_state = False
+
         if self._push_to_modelpool:
             self.model_queue = Queue(maxsize=100)
             pid = Process(target=self._push_to_model_pool, args=())
+            pid.daemon = True
             pid.start()
+
+    def print_variables(self, net, optimizer, step):
+        LOG.info(net)
 
     def send_model(self, save_model_dir, send_model_dir):
         os.makedirs(send_model_dir, exist_ok=True)
@@ -49,7 +57,7 @@ class ModelManager(object):
         while True:
             model_path = self.model_queue.get()
             if not os.path.exists(model_path):
-                print("[model manager] {} not exists!!".format(model_path))
+                LOG.info("[model manager] {} not exists!!".format(model_path))
             else:
                 with open(model_path, "rb") as fin:
                     model = fin.read()
@@ -62,3 +70,25 @@ class ModelManager(object):
                     save_file_name=model_path.split("/")[-1],
                 )
                 self.step += 1
+
+    def restore_model_and_optimizer(self, net, optimizer, model_path):
+        LOG.info(f"Loading checkpoint from {model_path} ...")
+        state_dict = torch.load(model_path, map_location='cpu')
+        if self.load_optimizer_state:
+            optimizer.load_state_dict(state_dict["optimizer_state_dict"])
+        missing_keys, unexpected_keys = net.load_state_dict(state_dict["network_state_dict"], strict=False)
+        LOG.info(f"load ckpt success, missing_keys: {missing_keys}, unexpected_keys: {unexpected_keys}")
+        return state_dict.get("step", 0)
+
+    def save_checkpoint(self, net, optimizer, checkpoint_dir: str, step: int):
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        step = int(step)
+        checkpoint_file = os.path.join(checkpoint_dir, "model.pth")
+        torch.save(
+            {
+                "network_state_dict": net.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "step": step,
+            },
+            checkpoint_file,
+        )
