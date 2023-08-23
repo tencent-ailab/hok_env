@@ -28,33 +28,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Docker meta
-        id: meta_gpu_build_horovod
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            tencentailab/hok_env
-          flavor: |
-            prefix=gpu_build_horovod
-          tags: |
-            type=semver,pattern={{raw}}
-            type=sha,prefix=gpu_build_horovod_
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_gpu_build_horovod.outputs.tags }}
-          labels: ${{ steps.meta_gpu_build_horovod.outputs.labels }}
-          file: dockerfile/dockerfile.base.gpu
-          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu_build_horovod
-          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu_build_horovod,mode=max
-          target: build_horovod
-          build-args: |
-            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v1.2.0
-            BUILD_PYTHON_IMAGE=tencentailab/hok_env:base_build_python38_base_v1.2.0
-      -
-        name: Docker meta
         id: meta_gpu_base
         uses: docker/metadata-action@v4
         with:
@@ -73,12 +46,12 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_gpu_base.outputs.tags }}
           labels: ${{ steps.meta_gpu_base.outputs.labels }}
-          file: dockerfile/dockerfile.base.gpu
+          file: dockerfile/dockerfile.base.torch
+          target: gpu
           cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu_base
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu_base,mode=max
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v1.2.0
-            BUILD_PYTHON_IMAGE=tencentailab/hok_env:base_build_python38_base_v1.2.0
+            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v2.0.1
       -
         name: Docker meta
         id: meta_gpu
@@ -102,30 +75,6 @@ jobs:
           file: dockerfile/dockerfile.dev
           cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu,mode=max
+          target: battle
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:gpu_base_v1.2.0
-      -
-        name: Docker meta 3v3
-        id: meta_gpu_3v3
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            tencentailab/hok_env
-          flavor: |
-            prefix=gpu_3v3_
-          tags: |
-            type=semver,pattern={{raw}}
-            type=sha,prefix=gpu_3v3_
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_gpu.outputs.tags }}
-          labels: ${{ steps.meta_gpu.outputs.labels }}
-          file: dockerfile/dockerfile.dev.3v3
-          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu_3v3
-          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu_3v3,mode=max
-          build-args: |
-            BASE_IMAGE=tencentailab/hok_env:gpu_base_v1.2.0
+            BASE_IMAGE=tencentailab/hok_env:gpu_base_v2.0.1

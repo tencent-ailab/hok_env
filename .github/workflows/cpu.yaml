@@ -46,11 +46,12 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta_cpu_base.outputs.tags }}
           labels: ${{ steps.meta_cpu_base.outputs.labels }}
-          file: dockerfile/dockerfile.base.cpu
+          file: dockerfile/dockerfile.base.torch
+          target: cpu
           cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu_base
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu_base,mode=max
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:base_common_py37_base_v1.2.0
+            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v2.0.1
       -
         name: Docker meta
         id: meta_cpu
@@ -74,30 +75,6 @@ jobs:
           file: dockerfile/dockerfile.dev
           cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu,mode=max
+          target: battle
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:cpu_base_v1.2.0
-      -
-        name: Docker meta 3v3
-        id: meta_cpu_3v3
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            tencentailab/hok_env
-          flavor: |
-            prefix=cpu_3v3_
-          tags: |
-            type=semver,pattern={{raw}}
-            type=sha,prefix=cpu_3v3_
-      -
-        name: Build and push 3v3
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_cpu_3v3.outputs.tags }}
-          labels: ${{ steps.meta_cpu_3v3.outputs.labels }}
-          file: dockerfile/dockerfile.dev.3v3
-          cache-from: type=registry,ref=tencentailab/hok_env:buildcache_cpu_3v3
-          cache-to: type=registry,ref=tencentailab/hok_env:buildcache_cpu_3v3,mode=max
-          build-args: |
-            BASE_IMAGE=tencentailab/hok_env:cpu_base_v1.2.0
+            BASE_IMAGE=tencentailab/hok_env:cpu_base_v2.0.1

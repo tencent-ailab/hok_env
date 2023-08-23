@@ -14,6 +14,8 @@ RUN apt update && \
     apt install -y lrzsz && \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip3 install --no-cache-dir absl-py
+
 # rl_framework
 COPY ./rl_framework/ /rl_framework/
 
@@ -50,11 +52,6 @@ FROM dev_base as code3v3
 COPY ./aiarena/3v3/actor /aiarena/code/actor
 COPY ./aiarena/3v3/learner /aiarena/code/learner
 
-# runtime /aiarena/code 5v5dld dir
-FROM dev_base as code5v5dld
-COPY ./aiarena/5v5dld/actor /aiarena/code/actor
-COPY ./aiarena/5v5dld/learner /aiarena/code/learner
-
 # runtime /aiarena/code 1v1 dir
 FROM dev_base as code1v1
 COPY ./aiarena/1v1/actor /aiarena/code/actor
@@ -67,5 +64,3 @@ COPY ./aiarena/1v1/learner /aiarena/1v1/learner
 COPY ./aiarena/1v1/common /aiarena/1v1/common
 COPY ./aiarena/3v3/actor /aiarena/3v3/actor
 COPY ./aiarena/3v3/learner /aiarena/3v3/learner
-COPY ./aiarena/5v5dld/actor /aiarena/5v5dld/actor
-COPY ./aiarena/5v5dld/learner /aiarena/5v5dld/learner

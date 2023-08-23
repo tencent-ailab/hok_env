@@ -1,0 +1,7 @@
+ARG BASE_IMAGE=common_base_py38
+
+FROM ${BASE_IMAGE} as cpu
+RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+FROM ${BASE_IMAGE} as gpu
+RUN pip3 install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cu116
