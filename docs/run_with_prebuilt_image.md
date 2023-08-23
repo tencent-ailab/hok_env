@@ -1,5 +1,6 @@
 ## Run with pre-built image
 
+> Please refer to [cluster.md] (./cluster.md) for the linux-only tutorial
 
 1. Start gamecore server on windows
 
@@ -7,11 +8,13 @@
     cd gamecore
     gamecore-server.exe server --server-address :23432
     ```
+
 2. Start a container
 
     ```
-    docker run -it -p 35300-35400:35300-35400 tencentailab/hok_env:baseline_1v1_cpu_v1.1.0 bash
+    docker run -it -p 35300-35400:35300-35400 tencentailab/hok_env:cpu_v2.0.1 bash
     ```
+
 3. set the gamecore
 
     ```
@@ -20,34 +23,37 @@
 4. Run the `test_env.py`
 
     ```
-    cd /hok_env/hok/unit_test
+    cd /hok_env/hok/hok1v1/unit_test
     python3 test_env.py
     ```
+
 5. Start a job
 
     1. Start learner
 
         ```
-        cd /code/code/gpu_code/script
-        sh start_gpu.sh
+        cd /aiarena/scripts/learner/
+        sh start_learner.sh
         ```
+
     2. Start actor
 
         ```
         # if you run the actor in a same node with the learner, no need to start the model pool again
         export NO_MODEL_POOL=1
 
-        cd /code/code/cpu_code/script/
-        sh start_cpu.sh
+        cd /aiarena/scripts/actor/
+        sh start_actor.sh
         ```
+
     3. Check the log
 
         1. Learner
 
-            * trace.log
+            * train.log
 
               ```
-              # tail /code/logs/gpu_log/trace1.log 
+              # tail /aiarena/logs/learner/train.log 
               t shape (1024, 32)
               2022-12-02 19:22:57.398643: I tensorflow/core/platform/cpu_feature_guard.cc:142] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
               2022-12-02 19:22:57.411737: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2494140000 Hz
@@ -58,10 +64,6 @@
               [Debug] The sample is less than half the capacity 0 5000
               [Debug] The sample is less than half the capacity 1364 5000
               [Debug] The sample is less than half the capacity 1364 5000
-              ```
-            * train.log
-
-              ```
               # tail /code/logs/gpu_log/train.log 
               2022-12-02 19:22:48 log_manager.py[line:152] DEBUG init starting
               2022-12-02 19:22:49 log_manager.py[line:152] DEBUG init finished
@@ -71,28 +73,22 @@
               2022-12-02 19:36:25 log_manager.py[line:77] DEBUG step: 400 images/sec mean = 39.6 recv_sample/sec = 26 total_loss: -0.4639552 noise_scale: 1.00 batch_noisescale: 64.00 mean noise scale = 0.005000
               2022-12-02 19:41:48 log_manager.py[line:77] DEBUG step: 600 images/sec mean = 39.6 recv_sample/sec = 28 total_loss: 1.4184176 noise_scale: 1.00 batch_noisescale: 64.00 mean noise scale = 0.005000
               ```
+
             * loss.txt
 
               ```
-              # tail /code/logs/gpu_log/loss.txt 
+              # tail /aiarena/logs/learner/loss.txt 
               {"role": "learner", "ip_address": "127.0.0.1", "step": "200", "timestamp": "12/02/2022-19:31:02", "info_map": "{'loss': 0.011530144, 'value_cost': 0.37531283, 'entropy_cost': -11.996081, 'policy_cost': -0.06388064}"}
               {"role": "learner", "ip_address": "127.0.0.1", "step": "400", "timestamp": "12/02/2022-19:36:25", "info_map": "{'loss': -0.4639552, 'value_cost': 0.29535705, 'entropy_cost': -12.003362, 'policy_cost': -0.4592282}"}
               {"role": "learner", "ip_address": "127.0.0.1", "step": "600", "timestamp": "12/02/2022-19:41:48", "info_map": "{'loss': 1.4184176, 'value_cost': 1.0052822, 'entropy_cost': -11.962294, 'policy_cost': 0.71219283}"}
               ```
+
         2. Actor
 
             ```
-            # tail /code/logs/cpu_log/actor_0.log 
+            # tail /aiarena/logs/actor/actor_0.log 
             [{'hero': 'luban', 'skill': 'frenzy'}, {'hero': 'luban', 'skill': 'frenzy'}]
             I1202 19:41:37.569345 140293844768576 actor.py:145] [{'hero': 'luban', 'skill': 'frenzy'}, {'hero': 'luban', 'skill': 'frenzy'}]
-            Pb2Struct::InitChangeType usedefault=offline
-            Pb2Struct::InitChangeType change_type=offline
-            Pb2Struct::InitMainHeroType, no main_hero_type, use default mvp
-            cmd.player_id 8
-            Pb2Struct::InitChangeType usedefault=offline
-            Pb2Struct::InitChangeType change_type=offline
-            Pb2Struct::InitMainHeroType, no main_hero_type, use default mvp
-            cmd.player_id 9
             game not end, send close game at first 6962
             game not end, send close game at first 6962
             check game stopped.
@@ -101,7 +97,7 @@
             I1202 19:42:45.336433 140293844768576 actor.py:247] Tower ActorType.ACTOR_CRYSTAL in camp Camp.PLAYERCAMP_1, hp: 0
             I1202 19:42:45.336676 140293844768576 actor.py:247] Tower ActorType.ACTOR_CRYSTAL in camp Camp.PLAYERCAMP_2, hp: 7000
             I1202 19:42:45.475080 140293844768576 actor.py:299] ==================================================
-            I1202 19:42:45.475494 140293844768576 actor.py:300] game_id : b'9.134.89.169_28840_0_20221202194137_560'
+            I1202 19:42:45.475494 140293844768576 actor.py:300] game_id : b'127.0.0.1_28840_0_20221202194137_560'
             I1202 19:42:45.476910 140293844768576 actor.py:309] aiprocess_process | sum: 29435.193 mean:6.477815360915493 max:117.378 times:4544
             I1202 19:42:45.477501 140293844768576 actor.py:309] sample_manger_format_data | sum: 78.99 mean:78.99 max:78.99 times:1
             I1202 19:42:45.478820 140293844768576 actor.py:309] agent_process | sum: 29992.633 mean:13.200982834507043 max:122.47 times:2272

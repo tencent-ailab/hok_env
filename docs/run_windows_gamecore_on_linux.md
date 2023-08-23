@@ -1,11 +1,13 @@
 # Quick
 
-1. Download the latest gamecore(>=20230110) which fixes the compatibility with the Wine
+1. Download the latest gamecore (>= 20230110) that resolves compatibility issues with Wine
 
 2. Install Wine
+
     See also: https://wiki.winehq.org/Download_zhcn
 
-3. Run gamecore using Wine
+3. Execute gamecore using Wine
+
     ```
     export GAMECORE_PATH=${GAMECORE_PATH:-"/rl_framework/gamecore/"}
     export WINEPATH="${GAMECORE_PATH}/lib/;${GAMECORE_PATH}/bin/"
@@ -15,22 +17,23 @@
 
     See also: [sgame_simulator_remote_zmq_wine](../code/remote-gc-server/sgame_simulator_remote_zmq)
 
-# Build the gamecore image and run the test in the container
+# Construct the gamecore image and perform tests in the container
 
 ## Build gamecore image
 
-1. Install the docker
+1. Install Docker
+
     See also: https://www.docker.com/
 
-2. Download gamecore from website and save as `hok_env_gamecore.zip`
+2. Download gamecore from [website](https://aiarena.tencent.com/aiarena/zh/open-gamecore) and save as `hok_env_gamecore.zip`
 
-3. Apply for a license and save it as `license.dat`
+3. [Apply for a license](https://aiarena.tencent.com/aiarena/zh/open-gamecore) and save it as `license.dat`
 
-    The working dir now looks as follows:
+    The working directory should now appear as follows:
     ```
     # tree -L 1 hok_env
     hok_env
-    ├── code
+    ├── aiarena
     ├── dockerfile
     ├── docs
     ├── hok_env
@@ -41,9 +44,10 @@
     └── ...
     ```
 
-4. Build gamecore image with prebuilt CPU image
+4. Construct the gamecore image with a prebuilt CPU image
+
     ```
-    base_image=tencentailab/hok_env:cpu_v1.2.0
+    base_image=tencentailab/hok_env:cpu_v2.0.1
     target_image=gamecore
 
     docker build -f ./dockerfile/dockerfile.gamecore -t ${target_image} --build-arg=BASE_IMAGE=${base_image} .
@@ -51,21 +55,38 @@
 
 ## Test the gamecore image
 
-1. Start a gamecore server container
+1. Launch a gamecore server container
+
     ```
-    docker run -it gamecore bash
+    docker run --network host -e SIMULATOR_USE_WINE=1 -it gamecore bash
     ```
 
-2. Start the gamecore server running in the background
+    > `--network host` means exposing the gamecore server service to the host network
+
+    > `-e SIMULATOR_USE_WINE=1` means using Wine to run the gamecore
+
+    > To run the gamecore-server container in the background and access it via IP address (default: '127.0.0.0:23432'), use:
+    > ```
+    > docker run -d --name gamecore --network host -e SIMULATOR_USE_WINE=1 -it gamecore sh /rl_framework/remote-gc-server/run_and_monitor_gamecore_server.sh
+    > ```
+
+2. Initiate the gamecore server running in the background
+
     ```
-    export SIMULATOR_USE_WINE=1
-    nohup sh /rl_framework/remote-gc-server/run_and_monitor_gamecore_server.sh &
+    sh /rl_framework/remote-gc-server/start_gamecore_server.sh
     ```
 
-    Get the log of the gamecore server:
+    You may receive an output similar to this:
     ```
-    # cat /aiarena/logs/gamecore-server.log 
+    COMMAND   PID USER   FD   TYPE     DEVICE SIZE/OFF NODE NAME
+    gamecore-  34 root    7u  IPv6 1293702323      0t0  TCP *:23432 (LISTEN)
     ```
+
+    Obtain the gamecore server log:
+    ```
+    cat /aiarena/logs/gamecore-server.log
+    ```
+
     ```
     2023/01/10 16:54:06 maxprocs: Leaving GOMAXPROCS=8: CPU quota undefined
     [GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
@@ -86,7 +107,8 @@
     time="2023-01-10T16:54:06+08:00" level=info msg="start server" Address=":23432" ApiSvcBaseURL= DisableV2api=false Env=dev GamecoreMgr="map[CallBack:[map[] map[Failed:0 Succeed:0 Total:0] map[] map[SaveRate:0.5 SceneManager:map[ABSDir:/rl_framework/gamecore/scene Lock:map[] MaxABSNum:1000 SceneFile:/rl_framework/gamecore/scene/scene.json]] map[BackupDir:/rl_framework/gamecore/simulator_output Lock:map[] MaxFileNum:4000] map[]] CoreAssets:/rl_framework/gamecore/core_assets GameStore:map[] Preprocessor:map[remote:map[InitABSFile1v1:/rl_framework/gamecore/scene/1V1.abs InitABSFile3v3:/rl_framework/gamecore/scene/3V3.abs InitABSFile5v5:/rl_framework/gamecore/scene/5V5.abs SimulatorRemoteBin:/rl_framework/remote-gc-server/sgame_simulator_remote_zmq] remote_repeat:map[Remote:map[InitABSFile1v1:/rl_framework/gamecore/scene/1V1.abs InitABSFile3v3:/rl_framework/gamecore/scene/3V3.abs InitABSFile5v5:/rl_framework/gamecore/scene/5V5.abs SimulatorRemoteBin:/rl_framework/remote-gc-server/sgame_simulator_remote_zmq] RemoteRate:0.2 Repeat:map[SceneManager:map[ABSDir:/rl_framework/gamecore/scene Lock:map[] MaxABSNum:1000 SceneFile:/rl_framework/gamecore/scene/scene.json] SimulatorRepeatBin:/rl_framework/remote-gc-server/sgame_simulator_repeated_zmq]] repeat:map[SceneManager:map[ABSDir:/rl_framework/gamecore/scene Lock:map[] MaxABSNum:1000 SceneFile:/rl_framework/gamecore/scene/scene.json] SimulatorRepeatBin:/rl_framework/remote-gc-server/sgame_simulator_repeated_zmq]] SimulatorLib:/rl_framework/gamecore/lib]" SGameDir=ai_simulator_remote/ SGameFileName=sgame_simulator_remote_zmq.exe Token=
     ```
 
-3. Send a common ai request to the gamecore server
+3. Send a built-in rule-based AI request to the gamecore server
+
     ```
     python3 /rl_framework/remote-gc-server/test_client.py
     ```
@@ -94,7 +116,7 @@
     Success {'X-Request-ID': 'f86f66a9-69d5-4041-a6f8-31b3ea66cc60'}
     ```
 
-    Now you can see the `simulator.exe` process
+    Now you can view the `simulator.exe` process
     ```
     ps -e f
     ```
@@ -117,7 +139,7 @@
     183 pts/0    R+     0:00 ps -e f
     ```
 
-    Get the log of the game:
+    Obtain the game log:
     ```
     # cat /rl_framework/gamecore/simulator_output/*.log
     ```
@@ -159,12 +181,25 @@
     ```
     # ll /rl_framework/gamecore/simulator_output/*.abs
     ```
+
     ```
     -rw-r--r-- 1 root root 529613 Jan 10 16:55 /rl_framework/gamecore/simulator_output/AIOSS_230110-1655_linux_1450111_1450123_1_1_20001_kaiwu-test-runtime-id-0-1673340926220678557-341.abs
     ```
 
+    > Note: You can download the ABS file to Windows and utilize the replay tool to view the game video.
+    > For more details, please refer to [Replay Tool](https://github.com/tencent-ailab/hok_env/tree/master#replay-tool).
+
 4. Run `test_env.py`
-    ```
-    cd /hok_env/hok/unit_test/
-    python3 ./test_env.py
-    ```
+
+    - 1v1
+
+        ```
+        cd /hok_env/hok/hok1v1/unit_test
+        python3 ./test_env.py
+        ```
+
+    - 3v3
+
+        ```
+        python3 -c "from hok.hok3v3.unit_test.test_env import run_test; run_test()"
+        ```

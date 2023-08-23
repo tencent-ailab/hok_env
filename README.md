@@ -4,14 +4,17 @@
 ## Update: 3v3 Mode Now Available
 
 ```
-python3.7 -c "from hok.hok3v3.unit_test.test_env import run_test; run_test()"
+python3.8 -c "from hok.hok3v3.unit_test.test_env import run_test; run_test()"
 ```
 
 Please refer to [hok3v3](https://doc.aiarena.tencent.com/paper/hok3v3/latest/hok3v3_env/honor-of-kings/) for further information.
 
+Please consult [cluster.md](docs/cluster.md) document for instructions on cluster training utilizing the `hok_env` environment and the integrated `rl_framework`.
+
 ## Introduction
 
-[![Image](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml/badge.svg)](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml)
+[![cpu](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml/badge.svg)](https://github.com/tencent-ailab/hok_env/actions/workflows/cpu.yaml)
+[![gpu](https://github.com/tencent-ailab/hok_env/actions/workflows/gpu.yml/badge.svg)](https://github.com/tencent-ailab/hok_env/actions/workflows/gpu.yml)
 
 - [Hok_env](https://github.com/tencent-ailab/hok_env) is the open environment of the MOBA game: [Honor of kings 1V1](https://pvp.qq.com/). 
 - This repository mainly includes Hok_env SDK , a reinforcement learning training framework and an implementation of ppo algorithm based on the training framework. Hok_env SDK is used to interact with the gamecore of  Honor of Kings 1v1.
@@ -59,7 +62,7 @@ We also provided a docker image for training on your computer. In a further vers
 To enable cluster training, here is a workaround by running Windows gamecore on Linux: [run windows gamecore on linux](./docs/run_windows_gamecore_on_linux.md).
 
 ## Installation
-### Download the hok gamecore 
+### Download the hok gamecore
 
 You need to apply for the license and gamecore on this page: https://aiarena.tencent.com/aiarena/en/open-gamecore
 
@@ -156,81 +159,46 @@ pip install -e .
 ```
 2. Run the test script
 ```angular2html
-cd hok_env/hok_env/hok/unit_test/
+cd /hok_env/hok/hok1v1/unit_test
 python test_env.py
 ```
 If you see the following message, you have successfully established a connection with Hok_env and have completed a game. Congratulations!
-```angular2html
-load config...
-146[skill=80121]        127.0.0.1       35300   1000
- [('146', '80121'), '127.0.0.1', '35300', '1000'] /home/root/.hok/sgame_simulator.conf
-146[skill=80121]        127.0.0.1       35301   1000
- [('146', '80121'), '127.0.0.1', '35301', '1000'] /home/root/.hok/sgame_simulator.conf
+```
+# python test_env.py
+127.0.0.1:23432 127.0.0.1
 ======= test_send_action
-try to get first state... [False, False]
-Pb2Struct::InitChangeType usedefault=offline
-Pb2Struct::InitChangeType change_type=offline
-Pb2Struct::InitMainHeroType, no main_hero_type, use default mvp
-cp: cannot stat 'core/hero_*.conf': No such file or directory
-dump config... [{'hero': 'diaochan', 'use_common_ai': False, 'port': 35300}, {'hero': 'diaochan', 'use_common_ai': False, 'port': 35301}]
-[{'hero': 141, 'skill': '80121', 'port': 35300, 'use_common_ai': False}, {'hero': 141, 'skill': '80121', 'port': 35301, 'use_common_ai': False}]
-runtime_path:  /home/xiyangji/.hok/runtime/0
-command: cd /home/xiyangji/.hok/runtime/0;LD_LIBRARY_PATH="./:./core_assets:${LD_LIBRARY_PATH}" nohup stdbuf -oL core/sgame_simulator_remote_zmq 'gameid-20220608-211144-0' './sgame_simulator.conf' >> ./gameid-20220608-211144-0.log 2>&1
-Pb2Struct::InitChangeType usedefault=offline
-Pb2Struct::InitChangeType change_type=offline
-Pb2Struct::InitMainHeroType, no main_hero_type, use default mvp
-MapInfo::LoadSingleMap() key=map_pos_center1, value=-9154,48,-19950
-MapInfo::LoadSingleMap() key=map_pos_center2, value=-9235,48,-20031
-MapInfo::LoadSingleMap() key=map_pos_boundary_up, value=-15530,48,-4727
-MapInfo::LoadSingleMap() key=map_pos_boundary_down, value=-10971,48,-21767
-MapInfo::LoadSingleMap() key=map_split_edge_length, value=1000
-MapInfo::LoadSingleMap() key=map_view_distance, value=15000
-MapInfo::LoadSingleMap() key=map_length, value=113000
-MapInfo::LoadSingleMap() key=game_type, value=5v5
-MapInfo::LoadSingleMap() key=map_type, value=view_map
-MapInfo::LoadSingleMap() key=map_pos_center, value=0,0,0
-MapInfo::LoadSingleMap() key=map_pos_center1, value=-9154,48,-19950
-MapInfo::LoadSingleMap() key=map_pos_center2, value=-9235,48,-20031
-MapInfo::LoadSingleMap() key=map_pos_boundary_up, value=-15530,48,-4727
-MapInfo::LoadSingleMap() key=map_pos_boundary_down, value=-10971,48,-21767
-MapInfo::LoadSingleMap() key=map_split_edge_length, value=10000
-MapInfo::LoadSingleMap() key=map_view_distance, value=56500
-MapInfo::LoadSingleMap() key=map_length, value=113000
-MapInfo::LoadSingleMap() key=game_type, value=5v5
-MapInfo::LoadSingleMap() key=map_type, value=whole_map
-MapInfo::LoadSingleMap() key=map_pos_center, value=0,0,0
-MapInfo::LoadSingleMap() key=map_pos_center1, value=-9154,48,-19950
-MapInfo::LoadSingleMap() key=map_pos_center2, value=-9235,48,-20031
-MapInfo::LoadSingleMap() key=map_pos_boundary_up, value=-15530,48,-4727
-MapInfo::LoadSingleMap() key=map_pos_boundary_down, value=-10971,48,-21767
-MapInfo::LoadSingleMap() key=map_split_edge_length, value=4000
-MapInfo::LoadSingleMap() key=map_view_distance, value=56500
-MapInfo::LoadSingleMap() key=map_length, value=113000
-MapInfo::LoadSingleMap() key=game_type, value=5v5
-MapInfo::LoadSingleMap() key=map_type, value=whole_map
-MapInfo::LoadSingleMap() key=map_pos_center, value=0,0,0
-cmd.player_id 8
-Pb2Struct::InitChangeType usedefault=offline
-Pb2Struct::InitChangeType change_type=offline
-Pb2Struct::InitMainHeroType, no main_hero_type, use default mvp
-cmd.player_id 9
+camp_config {'mode': '1v1', 'heroes': [[{'hero_id': 132}], [{'hero_id': 133}]]}
+common_ai [False, True]
+try to get first state...
 first state:  dict_keys(['observation', 'legal_action', 'reward', 'done', 'model_output_name', 'game_id', 'player_id', 'frame_no', 'sub_action_mask', 'req_pb', 'sgame_id'])
-first frame: 159
+first frame: 0
 ----------------------run step  0
-----------------------run step  1
-----------------------run step  2
-----------------------run step  3
-----------------------run step  4
-----------------------run step  5
-----------------------run step  6
-----------------------run step  7
-----------------------run step  8
-----------------------run step  9
-----------------------run step  10
-game not end, send close game at first 192
-game not end, send close game at first 192
-close ip! 0
-close ip! 1
+----------------------run step  100
+----------------------run step  200
+----------------------run step  300
+----------------------run step  400
+----------------------run step  500
+----------------------run step  600
+----------------------run step  700
+----------------------run step  800
+----------------------run step  900
+----------------------run step  1000
+----------------------run step  1100
+2023-08-23 13:13:57.782 | INFO     | hok.common.log:info:85 - game not end, send close game at first: cur_frame_no(3525)
+[{
+    "player_id": 8,
+    "frame_no": 30,
+    "observation": array([1.00000000e00, 1.00000000e00, 0.00000000e00, 0.00000000e00, ...]),
+    "reward": (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    "legal_action": array([1.0, 1.0, 1.0, 0.0, 0.0, ...]),
+    "sub_action_mask": {
+        0: array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        1: array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+        ...
+        11: array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+    },
+    "req_pb": hok.hok1v1.lib.interface.AIFrameState,
+}, ...]
 ```
 
 ## Modify Game Config
@@ -288,5 +256,4 @@ If you use the gamecore of hok_env or the code in this repository, please cite o
   booktitle={Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks},
   year={2022}
 }
-
 ```
