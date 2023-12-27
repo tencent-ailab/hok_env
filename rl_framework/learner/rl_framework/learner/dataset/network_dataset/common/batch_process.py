@@ -4,7 +4,7 @@ from multiprocessing import Array, Process, Queue, Value
 
 import numpy as np
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class BatchManager(object):

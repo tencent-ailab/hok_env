@@ -2,10 +2,12 @@ from numpy.random import rand
 import numpy as np
 
 from custom import Agent as BaseAgent
+from rl_framework.common.logging import logger as LOG
 
 pred_ret_shape = [(1, 84)] * 1
 lstm_cell_shape = [(1, 1), (1, 1)]
 tower_locations = [19820, 19820]
+home_locations = [-x - 10000 for x in tower_locations]
 
 from hok.hok1v1.lib.interface import (
     PLAYERCAMP_1,
@@ -56,7 +58,7 @@ class Agent(BaseAgent):
         prob, action, d_action = self._sample_masked_action(
             pred_ret[0], state_dict["legal_action"]
         )
-        value = np.zeros((1,1))
+        value = np.zeros((1, 1))
 
         pred_ret2 = (prob, value, action, d_action)
         return d_action, d_action, self._sample_process(state_dict, pred_ret2)
@@ -95,18 +97,32 @@ class Agent(BaseAgent):
                 # Get the distance and index of target who is nearest to hero
                 min_dis = min(np.array(distances)[flags])
                 target_idx = distances.index(min_dis)
+
+                ego_hp_rate = (
+                    frame_state.hero_list[hero_idx].hp
+                    / frame_state.hero_list[hero_idx].max_hp
+                )
+
                 # If the minimal distance is less than the distance threshold, then launch an attack
-                if min_dis < self.distance_threshold:
+                if min_dis < self.distance_threshold and ego_hp_rate > 0.5:
                     self.release_skill(pred_ret, target_idx, ids, index=i)
                 else:
+                    target_location_x = tower_locations[0]
+                    target_location_z = tower_locations[1]
+
+                    # go home
+                    if ego_hp_rate <= 0.5:
+                        target_location_x = home_locations[0]
+                        target_location_z = home_locations[1]
+
                     # if the distance is too far, try to move towards enemy's organ
                     if self.ego_camp_id == PLAYERCAMP_2:
                         # We try to convert the red team's frame state data for symmetric processing so that we can calculate in the same way.
-                        x_diff = tower_locations[0] - (-ego_loc_x)
-                        z_diff = tower_locations[1] - (-ego_loc_z)
+                        x_diff = target_location_x - (-ego_loc_x)
+                        z_diff = target_location_z - (-ego_loc_z)
                     else:
-                        x_diff = tower_locations[0] - ego_loc_x
-                        z_diff = tower_locations[1] - ego_loc_z
+                        x_diff = target_location_x - ego_loc_x
+                        z_diff = target_location_z - ego_loc_z
                     self.move_action(pred_ret, x_diff, z_diff, index=i)
             else:
                 # If the hero cannot find a target whose distance from him is not zero, then take any action
@@ -149,24 +165,24 @@ class Agent(BaseAgent):
         # That means, the hero will release skill towards the target.
 
         offset_x, offset_z = 8, 8
-        offset_x_max = max(action_space[index][0][43:59])
-        offset_z_max = max(action_space[index][0][59:75])
-        action_space[index][0][43 + offset_x] = offset_x_max + 1
-        action_space[index][0][59 + offset_z] = offset_z_max + 1
+        offset_x_max = max(action_space[index][0][44:60])
+        offset_z_max = max(action_space[index][0][60:76])
+        action_space[index][0][44 + offset_x] = offset_x_max + 1
+        action_space[index][0][60 + offset_z] = offset_z_max + 1
 
         # First, find the index corresponding to the target in target dimension.
         # Second, set the value corresponding to the index as maximum in target dimension.
-        target_max = max(action_space[index][0][59:])
+        target_max = max(action_space[index][0][60:])
         id = ids[target_idx]
         index_offset = target_idx - ids.index(id)
 
         if id == 0:
             # enemy hero
             index_offset = self.hero_idx_offset[index_offset]
-            action_space[index][0][75 + 2 + index_offset] = target_max + 1
+            action_space[index][0][76 + 1 + index_offset] = target_max + 1
         elif id == 1:
             # soldier
-            action_space[index][0][78 + index_offset] = target_max + 1
+            action_space[index][0][79 + index_offset] = target_max + 1
         elif id == 2:
             # organ
             action_space[index][0][83] = target_max + 1
@@ -175,7 +191,7 @@ class Agent(BaseAgent):
 
     def move_action(self, action_space, x_diff, z_diff, index):
         # Set the value corresponding to "move" action to maximum value in which_button dimension
-        which_button_max = max(action_space[index][0][:11])
+        which_button_max = max(action_space[index][0][:12])
 
         action_space[index][0][2] = which_button_max + 1
 
@@ -183,22 +199,23 @@ class Agent(BaseAgent):
         dis_diff_hero2target = np.sqrt(x_diff ** 2 + z_diff ** 2)
         move_x = x_diff / dis_diff_hero2target
         move_z = z_diff / dis_diff_hero2target
-        while abs(move_x) * 2 < 16 and abs(move_z) * 2 < 16:
+
+        while abs(move_x) * 2 < 8 and abs(move_z) * 2 < 8:
             move_x *= 2
             move_z *= 2
 
-        move_x = int(move_x)
-        move_z = int(move_z)
+        move_x = int(move_x) + 8
+        move_z = int(move_z) + 8
 
-        move_x_max = max(action_space[index][0][11:27])
-        move_z_max = max(action_space[index][0][27:43])
+        move_x_max = max(action_space[index][0][12:28])
+        move_z_max = max(action_space[index][0][28:44])
 
-        action_space[index][0][11 + move_x] = move_x_max + 1
-        action_space[index][0][27 + move_z] = move_z_max + 1
+        action_space[index][0][12 + move_x] = move_x_max + 1
+        action_space[index][0][28 + move_z] = move_z_max + 1
         return
 
     def noop_action(self, action_space, index):
-        which_button_max = max(action_space[index][0][:11])
+        which_button_max = max(action_space[index][0][:12])
         action_space[index][0][1] = which_button_max + 1
         return
 

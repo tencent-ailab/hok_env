@@ -11,7 +11,7 @@ from rl_framework.predictor.utils import (
 from rl_framework.model_pool import ModelPoolAPIs
 
 from rl_framework.common.logging import log_time
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 from hok.hok1v1.agent import AgentBase
 
 

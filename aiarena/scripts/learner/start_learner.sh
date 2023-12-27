@@ -39,7 +39,7 @@ log "node_num: ${node_num}"
 
 ##############################
 learner_num=$(cat $learner_list | awk '{print $4}' | awk '{sum+=$1} END {print sum}')
-proc_per_node=$((${learner_num}/${node_num}))
+proc_per_node=$((learner_num / node_num))
 NET_CARD_NAME=${NET_CARD_NAME:-"eth0"}
 log "learner_num: ${learner_num}"
 log "proc_per_node: ${proc_per_node}"
@@ -78,15 +78,15 @@ function run_learner_ddp() {
     export NCCL_SOCKET_IFNAME=$NET_CARD_NAME
     export NCCL_DEBUG=INFO
     nohup torchrun \
-    --nnodes ${node_num} \
-    --nproc_per_node=${proc_per_node} \
-    --rdzv_backend=c10d \
-    --rdzv_endpoint=${master_ip} \
-    train.py >> ${LOG_DIR}/train.log 2>&1 &
+        --nnodes ${node_num} \
+        --nproc_per_node=${proc_per_node} \
+        --rdzv_backend=c10d \
+        --rdzv_endpoint=${master_ip} \
+        train.py >>${LOG_DIR}/train.log 2>&1 &
 }
 
 use_ddp=0
-if grep -q "backend\s*=\s*pytorch" /aiarena/code/learner/config/common.conf; then
+if [[ ${AIARENA_BACKEND:-"pytorch"} == "pytorch" ]]; then
     # Check if the distributed_backend is set to ddp
     if grep -q "distributed_backend\s*=\s*ddp" /aiarena/code/learner/config/common.conf; then
         use_ddp=1

@@ -3,9 +3,10 @@ import time
 import os
 import socket
 
-import rl_framework.common.logging as LOG
-from rl_framework.common.logging import setup_logger
+from absl import app
 
+from rl_framework.common.logging import logger as LOG
+from rl_framework.common.logging import setup_logger
 
 # add aiarena
 sys.path.append("/")
@@ -19,10 +20,7 @@ from aiarena.process.monitor import (
 )
 from aiarena.process.send_model import CheckAndSendProcess
 from aiarena.process.actor_process import ActorProcess
-from aiarena.code.common.config import Config as CommonConfig
-
 from aiarena.process.config_process import ConfigParser
-from absl import app
 
 setup_logger(filename="/aiarena/logs/run.log", level="INFO")
 
@@ -90,6 +88,10 @@ config_definition = {
     "test_timeout": {
         "value": 300,
     },
+    "game_mode": {
+        "value": "1v1",
+        "env_alias": ["CAMP_DEFAULT_MODE"],
+    },
 }
 
 
@@ -148,6 +150,28 @@ def run(config):
     monitor_port = 8086
     monitor_server_addr = f"{master_ip}:{monitor_port}"
 
+    game_mode = config["game_mode"]
+    if game_mode == "1v1":
+        from aiarena.code.common.config import Config as CommonConfig
+
+        actor_config = CommonConfig
+        actor_model_config = None  # not used in 1v1
+        learner_model_config = CommonConfig
+        from hok.hok1v1.env1v1 import interface_default_config
+
+    elif game_mode == "3v3":
+        from aiarena.code.learner.config.Config import Config as learner_model_config
+        from aiarena.code.actor.config.config import Config as actor_config
+        from aiarena.code.actor.config.model_config import ModelConfig as actor_model_config
+        from hok.hok3v3.hero_config import interface_default_config
+    elif game_mode == "5v5dld":
+        from aiarena.code.learner.config.Config import Config as learner_model_config
+        from aiarena.code.actor.config.config import Config as actor_config
+        from aiarena.code.actor.config.model_config import ModelConfig as actor_model_config
+        from hok.hok5v5dld.hero_config import interface_default_config
+    else:
+        raise Exception(f"Unknown game_mode: {game_mode}")
+
     procs = []
 
     # TODO support cluster mode
@@ -171,12 +195,12 @@ def run(config):
         influxdb_exporter = InfluxdbExporterProcess(port=monitor_port)
         procs.append(influxdb_exporter)
 
-    CommonConfig.backend = backend
-    CommonConfig.use_init_model = use_init_model
+    actor_config.backend = backend
+    learner_model_config.backend = backend
+    learner_model_config.use_init_model = use_init_model
     if backend != "pytorch" and not use_ddp:
         raise Exception("TODO impl")
     else:
-        # TODO update common.conf
         learner = LearnerProcess(
             mem_pool_port_list=mem_pool_port_list,
             display_every=display_every,
@@ -185,7 +209,7 @@ def run(config):
             batch_size=batch_size,
             store_max_sample=store_max_sample,
             use_xla=use_xla,
-            config=CommonConfig,
+            model_config=learner_model_config,
         )
         procs.append(learner)
 
@@ -193,11 +217,13 @@ def run(config):
     for actor_id in range(actor_num):
         actor = ActorProcess(
             actor_id=actor_id,
+            config_path=interface_default_config,
             aiserver_ip=master_ip,
             mem_pool_addr_list=mem_pool_addr_list,
             max_episode=max_episode,
             monitor_server_addr=monitor_server_addr,
-            config=CommonConfig,
+            config=actor_config,
+            model_config=actor_model_config,
             max_frame_num=max_frame_num,
         )
         procs.append(actor)
@@ -228,8 +254,6 @@ def run(config):
                     LOG.warning("actor exit")
                     actor_ended = True
                     break
-    except Exception:
-        raise
     finally:
         LOG.info("Stop all processes started, wait...")
         # 只有actor需要释放gamecore, 通过terminate触发

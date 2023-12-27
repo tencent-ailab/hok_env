@@ -3,16 +3,11 @@ import torch.nn as nn  # for builtin modules including Linear, Conv2d, Multihead
 from torch.nn import ModuleDict  # for layer naming when nn.Sequential is not viable
 import numpy as np  # for some basic dimention computation, might be redundent
 
-from math import ceil, floor
+from math import floor
 from collections import OrderedDict
 
 # typing
-from torch import Tensor, LongTensor
-from typing import Dict, List, Tuple
-from ctypes import Union
-
-import glob
-import threading
+from typing import List, Tuple
 
 
 class Model(nn.Module):
@@ -20,29 +15,13 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.config = Config
         # feature configure parameter
-        self.lstm_time_steps = self.config.LSTM_TIME_STEPS
-        self.lstm_unit_size = self.config.LSTM_UNIT_SIZE
+        self.lstm_unit_size = self.config.LSTM_UNIT_SIZE  # for agent
         self.hero_data_split_shape = self.config.HERO_DATA_SPLIT_SHAPE
         self.hero_seri_vec_split_shape = self.config.HERO_SERI_VEC_SPLIT_SHAPE
         self.hero_feature_img_channel = self.config.HERO_FEATURE_IMG_CHANNEL
         self.hero_label_size_list = self.config.HERO_LABEL_SIZE_LIST
-        self.hero_is_reinforce_task_list = self.config.HERO_IS_REINFORCE_TASK_LIST
-
-        self.learning_rate = self.config.INIT_LEARNING_RATE_START
-        self.var_beta = self.config.BETA_START
-
-        self.clip_param = self.config.CLIP_PARAM
-        self.each_hero_loss_list = []
-        self.restore_list = []
-        self.min_policy = self.config.MIN_POLICY
-        self.embedding_trainable = True
-        self.value_head_num = 1
 
         self.hero_num = 3
-        self.hero_data_len = sum(self.config.data_shapes[0])
-
-        self.lstm_time_steps = 1
-        self.batch_size = 1
 
         self.single_hero_feature_dim = int(self.config.DIM_OF_HERO_EMY[0])
         self.single_soldier_feature_dim = int(self.config.DIM_OF_SOLDIER_1_10[0])
@@ -68,7 +47,7 @@ class Model(nn.Module):
         # build network
         kernel_size_list = [(5, 5), (3, 3)]
         padding_list = ["same", "same"]
-        channel_list = [self.hero_feature_img_channel[0][0], 18, 12]
+        channel_list = [self.hero_feature_img_channel, 18, 12]
         assert (
             len(channel_list) == len(kernel_size_list) + 1
         ), "channel list and kernel size list length mismatch"
@@ -184,10 +163,10 @@ class Model(nn.Module):
         self.label_mlp = ModuleDict(
             {
                 "hero_label{0}_mlp".format(label_index): MLP(
-                    [256, 64, self.hero_label_size_list[0][label_index]],
+                    [256, 64, self.hero_label_size_list[label_index]],
                     "hero_label{0}_mlp".format(label_index),
                 )
-                for label_index in range(len(self.hero_label_size_list[0]))
+                for label_index in range(len(self.hero_label_size_list))
             }
         )
 
@@ -201,15 +180,15 @@ class Model(nn.Module):
 
         for hero_index, hero_data in enumerate(data_list):
             hero_feature = hero_data
-            img_fet_dim = np.prod(self.hero_seri_vec_split_shape[hero_index][0])
-            vec_fet_dim = np.prod(self.hero_seri_vec_split_shape[hero_index][1])
+            img_fet_dim = np.prod(self.hero_seri_vec_split_shape[0])
+            vec_fet_dim = np.prod(self.hero_seri_vec_split_shape[1])
             feature_img, feature_vec = hero_feature.split(
                 [img_fet_dim, vec_fet_dim], dim=1
             )
 
-            feature_img_shape = list(self.hero_seri_vec_split_shape[0][0])
+            feature_img_shape = list(self.hero_seri_vec_split_shape[0])
             feature_img_shape.insert(0, -1)  # (bs, c, h, w)
-            feature_vec_shape = list(self.hero_seri_vec_split_shape[0][1])
+            feature_vec_shape = list(self.hero_seri_vec_split_shape[1])
             feature_vec_shape.insert(0, -1)
             _feature_img = feature_img.reshape(feature_img_shape)
             _feature_vec = feature_vec.reshape(feature_vec_shape)
@@ -253,7 +232,7 @@ class Model(nn.Module):
                 self.config.DIM_OF_SOLDIER_1_10, dim=1
             )
             _soldier_1_10 = torch.stack(soldier_1_10, dim=1)
-            soldier_11_20 = soldier_vec_list[0].split(
+            soldier_11_20 = soldier_vec_list[1].split(
                 self.config.DIM_OF_SOLDIER_11_20, dim=1
             )
             _soldier_11_20 = torch.stack(soldier_11_20, dim=1)
@@ -286,7 +265,7 @@ class Model(nn.Module):
             pool_frd_hero, _ = hero_frd_fc_out.max(dim=1)
 
             hero_emy_mlp_out = self.hero_mlp(_hero_emy)
-            hero_emy_fc_out = self.hero_frd_fc(hero_emy_mlp_out)
+            hero_emy_fc_out = self.hero_emy_fc(hero_emy_mlp_out)
             pool_emy_hero, _ = hero_emy_fc_out.max(dim=1)
 
             # soldier_share
@@ -347,9 +326,7 @@ class Model(nn.Module):
             fc_public_result = torch.cat(
                 [pool_hero_public, hero_public_second_result_list[hero_index]], dim=1
             )
-            for label_index, label_dim in enumerate(
-                self.hero_label_size_list[hero_index]
-            ):
+            for label_index, label_dim in enumerate(self.hero_label_size_list):
                 label_mlp_out = self.label_mlp["hero_label{0}_mlp".format(label_index)](
                     fc_public_result
                 )
@@ -384,7 +361,7 @@ class Model(nn.Module):
         hero_data_list = []
         for hero_index in range(self.hero_num):
             hero_data = datas[hero_index].float()
-            hero_data.view(-1, self.hero_data_split_shape[hero_index][0])
+            hero_data.view(-1, self.hero_data_split_shape[0])
             hero_data = torch.unsqueeze(hero_data, 0)
             hero_data_list.append(hero_data)
         self.lstm_cell = datas[-2].float()

@@ -7,7 +7,7 @@ from hok.hok3v3.server import AIServer
 from hok.common.gamecore_client import GamecoreClient
 from hok.hok3v3.env import Environment
 from hok.common.log import setup_logger
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 
 def get_hok3v3(GC_SERVER_ADDR):

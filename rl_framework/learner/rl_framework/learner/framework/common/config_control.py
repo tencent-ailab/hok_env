@@ -21,6 +21,7 @@ class ConfigControl(object):
         self.batch_size = config.getint("main", "batch_size")
         self.mem_process_num = config.getint("main", "mem_process_num")
         self.save_model_steps = config.getint("main", "save_model_steps")
+        self.save_model_seconds = config.getint("main", "save_model_seconds", fallback=2 * 60)
         self.save_model_dir = (
             config.get("main", "save_model_dir")
             if "save_model_dir" in config.options("main")
@@ -67,6 +68,7 @@ class ConfigControl(object):
         self.dump_profile = config.getboolean('main', 'dump_profile', fallback=False)  # torch-only
 
         self.use_init_model = config.getboolean("model", "use_init_model")
+        self.load_optimizer_state = config.getboolean("model", "load_optimizer_state", fallback=True)
         self.init_model_path = (
             config.get("model", "init_model_path")
             if "init_model_path" in config.options("model")
@@ -74,6 +76,7 @@ class ConfigControl(object):
         )
         self.use_xla = config.getboolean('model', 'use_xla')  # tf-only
         self.use_jit = config.getboolean('model', 'use_jit', fallback=False)  # torch-only
+        self.use_compile = config.getboolean('model', 'use_compile', fallback=False)  # torch-only
         self.use_mix_precision = config.getboolean("model", "use_mix_precision")
         self.channels_last = config.getboolean('model', 'channels_last', fallback=False)  # torch-only
         self.use_fp16 = (

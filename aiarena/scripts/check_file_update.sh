@@ -5,7 +5,7 @@ if [ "$#" -gt 2 ]; then
     exit 1
 fi
 
-file=${1-${CHECK_FILE_UPDATE_FILE-"/aiarena/logs/learner/loss.txt"}}
+file=${1-${CHECK_FILE_UPDATE_FILE-"/aiarena/logs/learner/train.log"}}
 max_time_diff=${2-${CHECK_FILE_UPDATE_MAX_TIME_DIFF-"300"}}
 
 if [ ! -e "$file" ]; then

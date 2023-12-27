@@ -1,4 +1,5 @@
 import time
+from collections import defaultdict
 import numpy as np
 import random
 
@@ -9,7 +10,7 @@ from rl_framework.predictor.utils import (
 from rl_framework.model_pool import ModelPoolAPIs
 
 from hok.common.log import log_time
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 _g_rand_max = 10000
 _g_model_update_ratio = 0.8
@@ -184,7 +185,7 @@ class Agent:
     def predict_process(self, features, frame_state):
         runtime_ids = []
         for hero_idx in range(len(features)):
-            runtime_ids.append(features[hero_idx].model_info.hero_runtime_id)
+            runtime_ids.append(features[hero_idx].hero_runtime_id)
 
         if self.backend == "tensorflow":
             pred_ret, lstm_info = self._predict_process(
@@ -236,3 +237,98 @@ class Agent:
         self.lstm_cell, self.lstm_hidden = lstm_info
 
         return prob, lstm_info
+
+    def compute_reward(self, features, frame_state):
+        hero_rid_rewards = features[0].hero_rid_reward
+
+        team_rewards = defaultdict(list)
+        hero_reward = defaultdict(float)
+        for hero in frame_state.hero_list:
+            rid = hero.runtime_id
+            reward = sum(hero_rid_rewards[rid].values())
+            hero_reward[rid] = reward
+            team_rewards[hero.camp].append(reward)
+
+        team_reward_avg = defaultdict(float)
+        for camp, hero_rewards in team_rewards.items():
+            team_reward_avg[camp] = sum(hero_rewards) / len(hero_rewards)
+
+        m_whether_use_zero_sum_reward = 1
+        m_team_spirit = 0
+        m_time_scaling_discount = 1
+        m_time_scaling_time = 4500
+
+        rewards = []
+        for feature in features:
+            rid = feature.hero_runtime_id
+            camp_id = feature.camp_id
+
+            main_hero_reward = hero_reward[rid]
+
+            if camp_id == 1:
+                ally_camp_mean_reward = team_reward_avg[1]
+                enemy_camp_mean_reward = team_reward_avg[2]
+            elif camp_id == 2:
+                ally_camp_mean_reward = team_reward_avg[2]
+                enemy_camp_mean_reward = team_reward_avg[1]
+            else:
+                ally_camp_mean_reward = 0
+                enemy_camp_mean_reward = 0
+                LOG.warning("Unknow hero camp: {}", camp_id)
+
+            main_hero_reward_final = (
+                (1 - m_team_spirit) * main_hero_reward
+                + m_team_spirit * ally_camp_mean_reward
+                - m_whether_use_zero_sum_reward * enemy_camp_mean_reward
+            )
+            main_hero_reward_final *= pow(
+                m_time_scaling_discount, (frame_state.frame_no / m_time_scaling_time)
+            )
+            rewards.append(main_hero_reward_final)
+
+            # assert main_hero_reward_final - feature.reward < 1e-5
+
+        return rewards
+
+    def sample_process(self, features, results, lstm_info, frame_state):
+        # 自定义reward示例
+        # rewards = self.compute_reward(features, frame_state)
+
+        lstm_cell, lstm_hidden = lstm_info
+
+        # probs : two camp , 3 heros, label prob +  value
+        frame_no = frame_state.frame_no
+
+        feature_one_camp = []
+        reward_one_camp = []
+        actions_one_camp = []
+        sub_actions_one_camp = []
+        legal_action_one_camp = []
+        prob_one_camp = []
+        value_one_camp = []
+        is_train_one_camp = []
+        for hero in range(len(features)):
+            feature_one_camp.append(np.array(features[hero].feature))
+            legal_action_one_camp.append(sum(results[hero].legal_action, []))
+            actions_one_camp.append(results[hero].actions)
+            reward_one_camp.append(features[hero].reward)
+            tmp_prob = sum(results[hero].final_prob_list, [])
+            prob_one_camp.append(tmp_prob[:-1])
+            value_one_camp.append(tmp_prob[-1])
+            sub_actions_one_camp.append(results[hero].sub_actions)
+            is_train_one_camp.append(results[hero].is_train)
+
+        sample = {
+            "frame_no": frame_no,
+            "vec_feature_s": feature_one_camp,
+            "legal_action_s": legal_action_one_camp,
+            "action_s": actions_one_camp,
+            "reward_s": reward_one_camp,
+            "value_s": value_one_camp,
+            "prob_s": prob_one_camp,
+            "sub_action_s": sub_actions_one_camp,
+            "lstm_cell": lstm_cell,
+            "lstm_hidden": lstm_hidden,
+            "is_train": is_train_one_camp,
+        }
+        return sample

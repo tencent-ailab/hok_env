@@ -24,10 +24,363 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 3,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PC55262B421F7C6F0"
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 12,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.0.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "reward",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "1m"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "autogen",
+          "query": "SELECT mean(\"reward\") FROM \"autogen\".\"cpu_ip_info\" WHERE $timeFilter GROUP BY time(1m) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "reward"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "reward",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PC55262B421F7C6F0"
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 13,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.0.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "totalHurtToHero",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "1m"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "cpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "totalHurtToHero"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "TotalHurtToHero",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PC55262B421F7C6F0"
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 11,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "10.0.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "alias": "win_rate",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "1m"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "measurement": "cpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "autogen",
+          "query": "SELECT mean(\"win\") FROM \"autogen\".\"cpu_ip_info\" WHERE $timeFilter GROUP BY time(1m) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "win"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "thresholds": [],
+      "timeRegions": [],
+      "title": "win_rate",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "mode": "time",
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        },
+        {
+          "format": "short",
+          "logBase": 1,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false
+      }
+    },
     {
       "datasource": {
         "type": "influxdb",
@@ -59,7 +412,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -89,7 +442,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 7
       },
       "id": 1,
       "options": {
@@ -183,7 +536,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -213,7 +566,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 15
       },
       "id": 5,
       "options": {
@@ -354,6 +707,90 @@
             ]
           ],
           "tags": []
+        },
+        {
+          "alias": "hero_3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-153e37bc-b650-42e6-bef7-c67ff73b13ef-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_4_2"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "alias": "hero_4",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-153e37bc-b650-42e6-bef7-c67ff73b13ef-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_5_2"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "title": "entropy_loss",
@@ -390,7 +827,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -420,7 +857,7 @@
         "h": 8,
         "w": 9,
         "x": 8,
-        "y": 8
+        "y": 15
       },
       "id": 4,
       "options": {
@@ -561,6 +998,90 @@
             ]
           ],
           "tags": []
+        },
+        {
+          "alias": "hero_3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-69e592c1-bb30-4a27-baeb-5e49bf3f20d3-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_4_1"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "alias": "hero_4",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-69e592c1-bb30-4a27-baeb-5e49bf3f20d3-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_5_1"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "title": "policy_loss",
@@ -597,7 +1118,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -627,7 +1148,7 @@
         "h": 8,
         "w": 7,
         "x": 17,
-        "y": 8
+        "y": 15
       },
       "id": 2,
       "options": {
@@ -792,7 +1313,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 23
       },
       "id": 10,
       "options": {
@@ -915,7 +1436,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 23
       },
       "id": 9,
       "options": {
@@ -1083,7 +1604,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 31
       },
       "id": 8,
       "options": {
@@ -1206,7 +1727,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 31
       },
       "id": 3,
       "options": {
@@ -1347,6 +1868,90 @@
             ]
           ],
           "tags": []
+        },
+        {
+          "alias": "hero_3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-960e9c36-32f1-44d3-a303-40ce37c78a6e-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_4_0"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
+        },
+        {
+          "alias": "hero_4",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PC55262B421F7C6F0"
+          },
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "key": "Q-960e9c36-32f1-44d3-a303-40ce37c78a6e-0",
+          "measurement": "gpu_ip_info",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "C",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "loss_5_0"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "last"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "title": "value_loss",
@@ -1383,7 +1988,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -1413,7 +2018,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 39
       },
       "id": 7,
       "options": {
@@ -1536,7 +2141,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 32
+        "y": 39
       },
       "id": 6,
       "options": {
@@ -1683,7 +2288,8 @@
       "type": "timeseries"
     }
   ],
-  "schemaVersion": 37,
+  "refresh": "",
+  "schemaVersion": 38,
   "style": "dark",
   "tags": [],
   "templating": {
@@ -1697,6 +2303,6 @@
   "timezone": "",
   "title": "hok_env",
   "uid": "MthELUIVz",
-  "version": 17,
+  "version": 2,
   "weekStart": ""
 }

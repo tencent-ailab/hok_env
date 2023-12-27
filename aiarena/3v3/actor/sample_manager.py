@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
-from rl_data_info import RLDataInfo
-from rl_framework.common.logging import log_time
-import rl_framework.common.logging as LOG
-from config.config import Config
-from config.model_config import ModelConfig
-from reward_manager import RewardManager
-import numpy as np
 import collections
+import numpy as np
 import random
 
+from rl_framework.common.logging import log_time
+from rl_framework.common.logging import logger as LOG
 from rl_framework.mem_pool import MemPoolAPIs
 
-# import interface
+from rl_data_info import RLDataInfo
 
 
 class SampleManager:
@@ -20,15 +16,15 @@ class SampleManager:
         mem_pool_addr,
         num_agents,
         single_test=False,
+        sample_one_size=4921,
+        lstm_unit_size=16,
+        lstm_time_steps=16,
+        gamma=0.995,
+        lamda=0.95,
     ):
         self.single_test = single_test
         # connect to mem pool
-        # deal with multiple mem_pool, randomly select one to connect!
-        mem_pool_addr = mem_pool_addr.strip().split(";")
-        LOG.info("mempool list: {}".format(mem_pool_addr))
-        idx = random.randint(0, len(mem_pool_addr) - 1)
-        mem_pool_addr = mem_pool_addr[idx]
-        LOG.info("connect to mempool: {}".format(mem_pool_addr))
+        mem_pool_addr = mem_pool_addr
         ip, port = mem_pool_addr.split(":")
         self.m_mem_pool_ip = ip
         self.m_mem_pool_port = port
@@ -40,30 +36,23 @@ class SampleManager:
                 socket_type="zmq",
             )
 
-        self.m_task_id, self.m_task_uuid = ModelConfig.TASK_ID, ModelConfig.TASK_UUID
         self.num_agents = num_agents
         self.rl_data_map = [collections.OrderedDict() for _ in range(num_agents)]
         self.m_replay_buffer = [[] for _ in range(num_agents)]
 
-        self.hero_num = Config.HERO_NUM
+        self.hero_num = 3
 
-        # load config from config file
-        self.gamma = Config.GAMMA
-        self.lamda = Config.LAMDA
-
-        self.reward_manager = RewardManager(self.gamma, self.lamda)
+        self.gamma = gamma
+        self.lamda = lamda
+        self.lstm_time_steps = lstm_time_steps
+        self.lstm_unit_size = lstm_unit_size
+        self.sample_one_size = sample_one_size
 
     def reset(self):
         LOG.debug("reset sample_manager")
         self.rl_data_map = [collections.OrderedDict() for _ in range(self.num_agents)]
         self.m_replay_buffer = [[] for _ in range(self.num_agents)]
 
-    # DATA_SPLIT_SHAPE = [1101, 1, 1, 1,1,1,1,1,1, 12, 16, 16, 16, 16, 14, 1, 1, 1, 1, 1, 1, 1, 1024, 1024]
-    # SERI_VEC_SPLIT_SHAPE = [(1011,), (90,)]
-    # INIT_LEARNING_RATE_START = 0.0001
-    # BETA_START = 0.025
-    # LOG_EPSILON = 1e-6
-    # LABEL_SIZE_LIST = [12, 16, 16, 16, 16, 14]
     @log_time("save_sample")
     def save_sample(
         self,
@@ -77,11 +66,8 @@ class SampleManager:
         sub_action_s,
         lstm_cell,
         lstm_hidden,
-        done,
         agent_id,
         is_train,
-        all_hero_reward_s,
-        uuid=None,
     ):
         """
         samples must saved by frame_no order
@@ -95,23 +81,12 @@ class SampleManager:
 
             value = value_s[hero_idx]
 
-            # if frame_no in self.rl_data_map[agent_id].keys():
-            #     LOG.error("Error: repeated frame {} in sample manager {}.".format(frame_no, agent_id))
-            #     assert False
-
             # update last frame's next_value
             if len(self.rl_data_map[agent_id]) > 0:
                 last_key = list(self.rl_data_map[agent_id].keys())[-1]
                 last_rl_data_info = self.rl_data_map[agent_id][last_key]
                 last_rl_data_info[hero_idx].next_value = value_s[hero_idx]
                 last_rl_data_info[hero_idx].reward = reward_s[hero_idx]
-                last_rl_data_info[hero_idx].all_hero_reward = all_hero_reward_s[
-                    hero_idx
-                ]
-                LOG.debug(
-                    "frame_no:%d all_hero_reward_size:%d"
-                    % (frame_no, len(last_rl_data_info[hero_idx].all_hero_reward))
-                )
 
             # save current sample
             rl_data_info.frame_no = frame_no
@@ -120,7 +95,6 @@ class SampleManager:
             rl_data_info.legal_action = np.array(legal_action_s[hero_idx]).reshape([-1])
             rl_data_info.reward = 0
             rl_data_info.value = value
-            # rl_data_info.done = done
 
             rl_data_info.lstm_info = np.concatenate([lstm_cell, lstm_hidden]).reshape(
                 [-1]
@@ -137,16 +111,10 @@ class SampleManager:
                 False if action_s[hero_idx][0] < 0 else is_train[hero_idx]
             )
             one_camp_data.append(rl_data_info)
-
-            # LOG.error("save {}, {}, {}".format(rl_data_info.value, rl_data_info.reward, rl_data_info.next_value))
-
-            # rl_data_info.task_uuid = struct.pack('%ss' % len(uuid), bytes(uuid, encoding="utf8"))
         self.rl_data_map[agent_id][frame_no] = one_camp_data
 
-    def save_last_sample(
-        self, agent_id, reward, value_s=None, all_hero_reward_s=None
-    ):
-        value_s = value_s or [0.0] * 3
+    def save_last_sample(self, agent_id, reward, value_s=None):
+        value_s = value_s or [0.0] * self.hero_num
         if len(self.rl_data_map[agent_id]) > 0:
             # TODO: is_action_executed, last_gamecore_act
             for hero_idx in range(self.hero_num):
@@ -154,13 +122,6 @@ class SampleManager:
                 last_rl_data_info = self.rl_data_map[agent_id][last_key]
                 last_rl_data_info[hero_idx].next_value = value_s[hero_idx]
                 last_rl_data_info[hero_idx].reward = reward[hero_idx]
-                last_rl_data_info[hero_idx].all_hero_reward = all_hero_reward_s[
-                    hero_idx
-                ]
-
-    # def save_value(self, value):
-    #     str_q_value = value.tostring()
-    #     self.rl_data_map[sorted(self.rl_data_map.keys())[-1]].next_Q_value = str_q_value
 
     def send_samples(self):
         self._calc_reward()
@@ -177,30 +138,23 @@ class SampleManager:
         for i in range(self.num_agents):
             reversed_keys = list(self.rl_data_map[i].keys())
             reversed_keys.reverse()
-            gae = [0.0, 0.0, 0.0]
-            self.reward_manager.reset()
-            LOG.info("i:%d reversed_keys_size:%d" % (i, len(reversed_keys)))
+            gae = [0.0] * self.hero_num
+            LOG.info("calc_reward i:%d reversed_keys_size:%d" % (i, len(reversed_keys)))
             index = 0
             for j in reversed_keys:
                 index += 1
                 rl_info = self.rl_data_map[i][j]
                 for hero_idx in range(self.hero_num):
-                    # delta = -rl_info[hero_idx].value + rl_info[hero_idx].reward + self.gamma * rl_info[hero_idx].next_value
-                    # gae[hero_idx] = gae[hero_idx]*self.gamma*self.lamda + delta
-                    # rl_info[hero_idx].advantage = gae[hero_idx]
-                    # rl_info[hero_idx].reward_sum = gae[hero_idx] + rl_info[hero_idx].value
-
-                    advantage, reward_sum = self.reward_manager.calc_advantage(
-                        i,
-                        hero_idx,
-                        rl_info[hero_idx].reward,
-                        rl_info[hero_idx].value,
-                        rl_info[hero_idx].next_value,
-                        rl_info[hero_idx].all_hero_reward,
-                        rl_info[hero_idx],
+                    delta = (
+                        -rl_info[hero_idx].value
+                        + rl_info[hero_idx].reward
+                        + self.gamma * rl_info[hero_idx].next_value
                     )
-                    rl_info[hero_idx].advantage = advantage
-                    rl_info[hero_idx].reward_sum = reward_sum
+                    gae[hero_idx] = gae[hero_idx] * self.gamma * self.lamda + delta
+                    rl_info[hero_idx].advantage = gae[hero_idx]
+                    rl_info[hero_idx].reward_sum = (
+                        gae[hero_idx] + rl_info[hero_idx].value
+                    )
 
                     LOG.debug(
                         "agent[%d] frame[%d] hero[%d] value[%f] next_value[%f] reward[%f] advantage[%f] reward_sum[%f]"
@@ -231,7 +185,7 @@ class SampleManager:
         for hero_idx in range(self.hero_num):
             # hero_data
             # for frame in range(self._LSTM_FRAME):
-            for frame in range(ModelConfig.LSTM_TIME_STEPS):
+            for frame in range(self.lstm_time_steps):
                 s_idx = e_idx
                 e_idx = s_idx + sample_one_size
                 sample[s_idx:e_idx] = sample_batch[hero_idx][frame]
@@ -245,14 +199,12 @@ class SampleManager:
     def _format_data(self):
         # sample_one_size = np.sum(self._data_shapes[:-2])//self._LSTM_FRAME
         # sample_one_size = np.sum(self._data_shapes[0])
-        sample_one_size = np.sum(ModelConfig.HERO_DATA_SPLIT_SHAPE[0])
+        sample_one_size = self.sample_one_size
         # unit_num * 2 (cell + hidden)
         # sample_lstm_size =  self._LSTM_UNIT_SIZE * 2
-        sample_lstm_size = ModelConfig.LSTM_UNIT_SIZE * 2
+        sample_lstm_size = self.lstm_unit_size * 2
         # sample_batch = np.zeros([self.hero_num, self._LSTM_FRAME, sample_one_size])
-        sample_batch = np.zeros(
-            [self.hero_num, ModelConfig.LSTM_TIME_STEPS, sample_one_size]
-        )
+        sample_batch = np.zeros([self.hero_num, self.lstm_time_steps, sample_one_size])
         sample_lstm = np.zeros([self.hero_num, sample_lstm_size])
         first_frame_no = -1
 
@@ -263,9 +215,7 @@ class SampleManager:
             for j in self.rl_data_map[i]:
                 index += 1
 
-                if (cnt > 0) and (
-                    (frame_num - index + 1) == ModelConfig.LSTM_TIME_STEPS
-                ):
+                if (cnt > 0) and ((frame_num - index + 1) == self.lstm_time_steps):
                     LOG.info("reset cnt frame_num:%d index:%d" % (frame_num, index))
                     cnt = 0
 
@@ -345,7 +295,7 @@ class SampleManager:
                 )
 
                 cnt += 1
-                if cnt == ModelConfig.LSTM_TIME_STEPS:
+                if cnt == self.lstm_time_steps:
                     # LOG.info("format_data i:%d j:%d cnt:%d first_frame_no:%d index:%d frame_num:%d" % (i, j, cnt, first_frame_no, index, frame_num))
                     cnt = 0
                     # reshape sample batch and put into sample

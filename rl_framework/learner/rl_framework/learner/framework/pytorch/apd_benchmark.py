@@ -12,7 +12,7 @@ from rl_framework.learner.framework.common.log_manager import LogManager
 from rl_framework.learner.framework.pytorch.apd_datasets import DataPrefetcher, Datasets
 from rl_framework.learner.framework.pytorch.model_manager import ModelManager
 from rl_framework.learner.framework.pytorch.step_context import StepContext
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class Profiler:
@@ -71,6 +71,7 @@ class Benchmark(object):
             self.dataset = Datasets(self.dataset_base)
         self.step_train_times = list()
         self.skip_update_times = 0
+        self._last_save_model_time = 0
         LOG.info("init finished")
 
     def init_env(self, node_info):
@@ -98,6 +99,8 @@ class Benchmark(object):
         self.net = network.to(self.device)
         if self.config_manager.channels_last:
             self.net = self.net.to(memory_format=torch.channels_last)
+        if self.config_manager.use_compile and hasattr(torch, "compile"):
+            self.net = torch.compile(self.net)
         get_optimizer = getattr(self.net, "get_optimizer", None)
         if callable(get_optimizer):
             self.optimizer = self.net.get_optimizer()
@@ -113,7 +116,6 @@ class Benchmark(object):
             model_checkpoint_path = os.path.join(
                 self.config_manager.init_model_path, "model.pth"
             )
-            LOG.info(f"Loading checkpoint from {model_checkpoint_path}")
             ckpt_step = self.model_manager.restore_model_and_optimizer(
                 self.net, self.optimizer, model_checkpoint_path
             )
@@ -174,14 +176,8 @@ class Benchmark(object):
             )
         # only save checkpoint_0 on master node
         if self.node.is_chief_rank:
-            LOG.info(f"Saving checkpoint_0 to {self.config_manager.save_model_dir}")
-            os.makedirs(self.config_manager.save_model_dir, exist_ok=True)
-            self.model_manager.save_checkpoint(
-                self.net, self.optimizer, self.config_manager.save_model_dir, 0
-            )
-            self.model_manager.send_model(
-                self.config_manager.save_model_dir, self.config_manager.send_model_dir
-            )
+            self.model_manager.save_checkpoint(self.net, self.optimizer, 0)
+            self._last_save_model_time = time.time()
 
     def do_train_step(self, step_context: StepContext, _input_datas):
         self.optimizer.zero_grad()
@@ -248,6 +244,13 @@ class Benchmark(object):
         results["info_list"] = _info_list
         return results
 
+    def _check_save_model(self):
+        return (
+            self.local_step % self.config_manager.save_model_steps == 0
+            or time.time() - self._last_save_model_time
+            > self.config_manager.save_model_seconds
+        )
+
     def _do_train(self):
         LOG.info("Start training...")
         self.net_wrapper.train()
@@ -265,6 +268,7 @@ class Benchmark(object):
             enabled=self.config_manager.use_mix_precision
         )
 
+        first_step = True
         for _ in range(self.config_manager.warmup_steps, self.config_manager.max_steps):
             batch_begin = time.time()
             if self.slow_time > 0:
@@ -274,7 +278,10 @@ class Benchmark(object):
             batch_duration = time.time() - batch_begin
             profiler.step()
             self.local_step += 1
-            if self.local_step % self.config_manager.save_model_steps != 0:
+
+            if first_step:
+                first_step = False
+            else:
                 self.step_train_times.append(batch_duration)
 
             if self.node.is_chief_rank and (
@@ -291,21 +298,11 @@ class Benchmark(object):
                 )
                 self.log_manager.print_result(results)
 
-            if (
-                self.local_step % self.config_manager.save_model_steps == 0
-                and self.node.is_chief_rank
-            ):
+            if self._check_save_model() and self.node.is_chief_rank:
                 self.model_manager.save_checkpoint(
-                    self.net,
-                    self.optimizer,
-                    self.config_manager.save_model_dir,
-                    self.local_step,
+                    self.net, self.optimizer, self.local_step
                 )
-                _, msg = self.model_manager.send_model(
-                    self.config_manager.save_model_dir,
-                    self.config_manager.send_model_dir,
-                )
-                LOG.info(msg)
+                self._last_save_model_time = time.time()
 
         # training finished
         images_per_sec = (
@@ -319,14 +316,9 @@ class Benchmark(object):
         # Save the model checkpoint.
         if self.node.is_chief_rank:
             self.model_manager.save_checkpoint(
-                self.net,
-                self.optimizer,
-                self.config_manager.save_model_dir,
-                self.local_step,
+                self.net, self.optimizer, self.local_step
             )
-            self.model_manager.send_model(
-                self.config_manager.save_model_dir, self.config_manager.send_model_dir
-            )
+            self._last_save_model_time = time.time()
 
     def run(self):
         self._do_train()

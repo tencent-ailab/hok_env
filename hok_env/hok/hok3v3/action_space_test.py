@@ -18,13 +18,12 @@ req_pb_test_data = FakeReq(
 )
 
 
-FakeFeature = namedtuple("FakeFeature", ["model_info"])
-FakeModelInfo = namedtuple("FakeModelInfo", ["camp_id", "hero_runtime_id"])
+FakeFeature = namedtuple("FakeFeature", ["camp_id", "hero_runtime_id"])
 
 features_test_data = [
-    FakeFeature(model_info=FakeModelInfo(camp_id=2, hero_runtime_id=13)),
-    FakeFeature(model_info=FakeModelInfo(camp_id=2, hero_runtime_id=14)),
-    FakeFeature(model_info=FakeModelInfo(camp_id=2, hero_runtime_id=15)),
+    FakeFeature(camp_id=2, hero_runtime_id=13),
+    FakeFeature(camp_id=2, hero_runtime_id=14),
+    FakeFeature(camp_id=2, hero_runtime_id=15),
 ]
 
 FakeProcessResult = namedtuple(

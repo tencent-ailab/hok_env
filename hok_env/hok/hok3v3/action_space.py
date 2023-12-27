@@ -203,7 +203,7 @@ class DumpProbs:
 
     def _get_hero_config_ids(self, hero_idx):
         self_hero_config_id = -1
-        ego_camp_id = self.features[hero_idx].model_info.camp_id
+        ego_camp_id = self.features[hero_idx].camp_id
         ego_hero_config_ids = []
         enemy_hero_config_ids = []
 
@@ -213,7 +213,7 @@ class DumpProbs:
             else:
                 enemy_hero_config_ids.append(hero.config_id)
 
-            if hero.runtime_id == self.features[hero_idx].model_info.hero_runtime_id:
+            if hero.runtime_id == self.features[hero_idx].hero_runtime_id:
                 self_hero_config_id = hero.config_id
         ego_hero_config_ids.sort()
         enemy_hero_config_ids.sort()
@@ -275,7 +275,7 @@ class DumpProbs:
         heros = []
         for hero_idx in range(len(self.process_result)):
             config_id = runtime_to_config[
-                self.features[hero_idx].model_info.hero_runtime_id
+                self.features[hero_idx].hero_runtime_id
             ]
 
             _final_prob_list = self.process_result[hero_idx].final_prob_list
@@ -347,7 +347,7 @@ class DumpProbs:
         data = {
             "sgame_id": self.req_pb.sgame_id,
             "frame_no": self.req_pb.frame_no,
-            "camp_id": self.features[0].model_info.camp_id,
+            "camp_id": self.features[0].camp_id,
             "heros": heros,
         }
         return data

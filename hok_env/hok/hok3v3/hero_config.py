@@ -4,7 +4,10 @@ import json
 default_hero_config_file = os.path.join(
     os.path.dirname(__file__), "default_hero_config.json"
 )
-interface_default_config = os.path.join(os.path.dirname(__file__), "config.dat")
+if os.getenv("KAIWU_V83_GAMECORE") == "1":
+    interface_default_config = os.path.join(os.path.dirname(__file__), "config.v83.dat")
+else:
+    interface_default_config = os.path.join(os.path.dirname(__file__), "config.dat")
 
 
 def get_default_hero_config():

@@ -3,7 +3,7 @@ import time
 import socket
 import os
 
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 
 class ServerProcess:

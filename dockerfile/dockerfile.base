@@ -15,59 +15,15 @@ RUN apt update && \
     DEBCONF_NONINTERACTIVE_SEEN=true DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata && \
     rm -rf /var/lib/apt/lists/*
 
-FROM base as build_python
-
-RUN apt update && \
-    apt-get build-dep -y python3 && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN apt update && \
-    apt-get install -y build-essential gdb lcov pkg-config \
-    libbz2-dev libffi-dev libgdbm-dev libgdbm-compat-dev liblzma-dev \
-    libncurses5-dev libreadline6-dev libsqlite3-dev libssl-dev \
-    lzma lzma-dev tk-dev uuid-dev zlib1g-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-ARG PYTHON_VERSION=3.7.16
-
-RUN wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz && \
-    tar -xf Python-${PYTHON_VERSION}.tar.xz && \
-    cd Python-${PYTHON_VERSION} && \
-    ./configure --enable-optimizations --with-lto --prefix /usr && \
-    make install -j 8 DESTDIR=/python && \
-    cd / && rm -rf Python-${PYTHON_VERSION}*
-
-FROM base as common_base
-
-COPY --from=build_python /python/ /
-
 # python
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONIOENCODING=UTF-8 LANG=C.UTF-8
-RUN python3 -m ensurepip --altinstall --upgrade && \
-    python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN apt update && \
+    apt install -y python3 python3-pip python3-venv && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN ln -sf $(which python3) /usr/bin/python
 
-# openmpi
-RUN apt update && \
-    apt install -y libopenmpi-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN mv /usr/bin/mpirun /usr/bin/mpirun.real && \
-    echo '#!/bin/bash' > /usr/bin/mpirun && \
-    echo 'mpirun.real --allow-run-as-root "$@"' >> /usr/bin/mpirun && \
-    chmod a+x /usr/bin/mpirun
-
-RUN echo "hwloc_base_binding_policy = none" >> /usr/local/etc/openmpi-mca-params.conf && \
-    echo "rmaps_base_mapping_policy = slot" >> /usr/local/etc/openmpi-mca-params.conf
-
-# Install monitor
-RUN wget -q -O /usr/share/keyrings/grafana.key https://packages.grafana.com/gpg.key  && \
-    echo "deb [signed-by=/usr/share/keyrings/grafana.key] https://packages.grafana.com/oss/deb stable main" >> /etc/apt/sources.list.d/grafana.list && \
-    apt update && \
-    apt install -y grafana influxdb curl lsof && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /etc/apt/sources.list.d/grafana.list
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONIOENCODING=UTF-8 LANG=C.UTF-8
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # sshd
 RUN apt update && \
@@ -82,7 +38,11 @@ RUN sed -i 's|^#*PasswordAuthentication.*|PasswordAuthentication yes|g'  /etc/ss
     sed -i 's|^#* *UserKnownHostsFile.*|SUserKnownHostsFile=/dev/null|g'  /etc/ssh/ssh_config
 
 RUN apt update && \
-    apt install -y net-tools tree rsync && \
+    apt install -y net-tools tree rsync lrzsz && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt update && \
+    apt install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appimage && \
@@ -91,3 +51,5 @@ RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim.appi
     cp -r ./squashfs-root/usr/ / && \
     rm -r squashfs-root nvim.appimage && \
     ln -sf /usr/bin/nvim /usr/bin/vim
+
+RUN mkdir -p ~/.config/nvim/ && echo "set mouse=" >> ~/.config/nvim/init.vim

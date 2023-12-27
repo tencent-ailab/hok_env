@@ -2,7 +2,7 @@ from agent.agent import Agent as BaseAgent
 from numpy.random import rand
 import numpy as np
 
-pred_ret_shape = [(1, 162), (1, 162), (1, 162)]
+pred_ret_shape = [(1, 162)] * 3
 lstm_cell_shape = [(1, 16), (1, 16)]
 
 

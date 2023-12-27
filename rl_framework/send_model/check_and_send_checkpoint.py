@@ -7,8 +7,9 @@ import glob
 from collections import OrderedDict
 from absl import app
 from absl import flags
+import shutil
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 flags.DEFINE_string("address", None, "remote server address")
 flags.DEFINE_string("syn_type", "no_sync", "p2p or model_pool")
@@ -44,6 +45,10 @@ flags.DEFINE_string(
     "model backup base dir",
 )
 
+flags.DEFINE_boolean(
+    "backup_ckpt_only", os.getenv("BACKUP_CKPT_ONLY", "0") == "1", "Do not build_code, backup ckpt only"
+)
+
 
 class CheckAndSend:
     def __init__(
@@ -56,6 +61,7 @@ class CheckAndSend:
         backup_base_dir="/mnt/ceph/Model",
         ckpt_file_storage_most_count=20,
         ckpt_dir="/rl_framework/send_model/model",
+        backup_ckpt_only=False,  # 仅备份ckpt文件, 不打包创建对战包
     ):
         self.model_syn = model_syn
         self.is_delete = is_delete
@@ -67,6 +73,7 @@ class CheckAndSend:
         self.backup_base_dir = backup_base_dir
         self.ckpt_dir = ckpt_dir
         self.ckpt_file_storage_most_count = ckpt_file_storage_most_count
+        self.backup_ckpt_only = backup_ckpt_only
 
     def run(self):
         files = glob.glob(self.ckpt_dir + "/*.tar.done")
@@ -76,24 +83,24 @@ class CheckAndSend:
         cp_file_order_dict = OrderedDict()
         send_file_done_order_dict = OrderedDict()
         the_last_model = None
-        last_save_time = None
+        last_save_time = 0
+        last_backup_name = ""
 
         while True:
-            time.sleep(1)
+            time.sleep(10)
             tmp_cp_file_list = sorted(
                 glob.glob(self.ckpt_dir + "/*.tar.done"),
                 key=os.path.getmtime,
             )
             tmp_cp_file_list = [x[:-5] for x in tmp_cp_file_list]
-            if (len(tmp_cp_file_list) > 0) and (
-                tmp_cp_file_list[-1] not in cp_file_order_dict
-            ):
+            if len(tmp_cp_file_list) > 0:
                 model_file = tmp_cp_file_list[-1]
                 model_name = model_file.split("/")[-1]
-                if the_last_model is not None and model_name == the_last_model:
-                    continue
 
-                self.model_syn.syn_model(model_file)
+                if model_file not in cp_file_order_dict and (
+                    the_last_model is None or model_name != the_last_model
+                ):
+                    self.model_syn.syn_model(model_file)
 
                 the_last_model = model_name
                 # save file info
@@ -104,18 +111,16 @@ class CheckAndSend:
                 # bkup model
                 if self.use_bkup:
                     cur_time = time.time()
-                    if (
-                        last_save_time is None
-                        or (cur_time - last_save_time) > self.bkup_model_interval
-                    ):
+                    if (cur_time - last_save_time) > self.bkup_model_interval:
                         last_save_time = cur_time
                         need_del_ckpt_file_name = list(cp_file_order_dict.keys())[-1]
-
-                        self._backup_file(
-                            need_del_ckpt_file_name,
-                            cp_file_order_dict,
-                            self.ckpt_dir,
-                        )
+                        if last_backup_name != need_del_ckpt_file_name:
+                            last_backup_name = need_del_ckpt_file_name
+                            self._backup_file(
+                                need_del_ckpt_file_name,
+                                cp_file_order_dict,
+                                self.ckpt_dir,
+                            )
 
                 if self.is_delete:
                     while len(cp_file_order_dict) > self.ckpt_file_storage_most_count:
@@ -135,7 +140,25 @@ class CheckAndSend:
                             os.system("rm %s/%s*" % (self.ckpt_dir, model_name))
 
     def _backup_file(self, key_name, order_dict_obj, base_path):
+        if self.backup_ckpt_only:
+            return self._ckpt_backup_file(key_name, order_dict_obj, base_path)
+        else:
+            return self._build_code_backup_file(key_name, order_dict_obj, base_path)
 
+    def _ckpt_backup_file(self, key_name, order_dict_obj, base_path):
+        if key_name in order_dict_obj:
+            dst_dir = os.path.join(self.backup_base_dir, self.task_id)
+            os.makedirs(dst_dir, exist_ok=True)
+
+            src_path = os.path.join(base_path, order_dict_obj[key_name])
+            shutil.copy(src_path, dst_dir)
+            LOG.info("backup model from %s to %s" % (src_path, dst_dir))
+
+            subprocess.run(
+                "cp /aiarena/logs/learner/loss.txt {}".format(dst_dir), shell=True
+            )
+
+    def _build_code_backup_file(self, key_name, order_dict_obj, base_path):
         if key_name in order_dict_obj:
             src_path = os.path.join(base_path, order_dict_obj[key_name])
             dst_dir = os.path.join(self.backup_base_dir, self.task_id)
@@ -194,8 +217,15 @@ def main(_):
         backup_base_dir=FLAGS.backup_base_dir,
         ckpt_dir=FLAGS.ckpt_dir,
         ckpt_file_storage_most_count=FLAGS.ckpt_file_storage_most_count,
+        backup_ckpt_only=FLAGS.backup_ckpt_only,
     )
-    check_and_send.run()
+    while True:
+        try:
+            check_and_send.run()
+        except:
+            LOG.exception("check and send failed")
+        finally:
+            time.sleep(1)
 
 
 if __name__ == "__main__":

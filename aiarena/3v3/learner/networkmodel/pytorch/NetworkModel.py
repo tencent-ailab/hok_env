@@ -22,10 +22,8 @@ class NetworkModel(nn.Module):
     def __init__(self):
         super(NetworkModel, self).__init__()
         # feature configure parameter
-        self.model_name = Config.NETWORK_NAME
         self.lstm_time_steps = Config.LSTM_TIME_STEPS
         self.lstm_unit_size = Config.LSTM_UNIT_SIZE
-        self.target_embedding_dim = Config.TARGET_EMBEDDING_DIM
         self.hero_data_split_shape = Config.HERO_DATA_SPLIT_SHAPE
         self.hero_seri_vec_split_shape = Config.HERO_SERI_VEC_SPLIT_SHAPE
         self.hero_feature_img_channel = Config.HERO_FEATURE_IMG_CHANNEL
@@ -39,7 +37,6 @@ class NetworkModel(nn.Module):
         self.restore_list = []
         self.min_policy = Config.MIN_POLICY
         self.embedding_trainable = False
-        self.value_head_num = Config.VALUE_HEAD_NUM
 
         self.hero_num = 3
         self.hero_data_len = sum(Config.data_shapes[0])
@@ -67,7 +64,7 @@ class NetworkModel(nn.Module):
         # build network
         kernel_size_list = [(5, 5), (3, 3)]
         padding_list = ["same", "same"]
-        channel_list = [self.hero_feature_img_channel[0][0], 18, 12]
+        channel_list = [self.hero_feature_img_channel, 18, 12]
         assert (
             len(channel_list) == len(kernel_size_list) + 1
         ), "channel list and kernel size list length mismatch"
@@ -183,32 +180,31 @@ class NetworkModel(nn.Module):
         self.label_mlp = ModuleDict(
             {
                 "hero_label{0}_mlp".format(label_index): MLP(
-                    [256, 64, self.hero_label_size_list[0][label_index]],
+                    [256, 64, self.hero_label_size_list[label_index]],
                     "hero_label{0}_mlp".format(label_index),
                 )
-                for label_index in range(len(self.hero_label_size_list[0]))
+                for label_index in range(len(self.hero_label_size_list))
             }
         )
 
         self.value_mlp = MLP([256, 64, 1], "hero_value_mlp")
 
     def forward(self, data_list, inference=False):
-
         all_hero_result_list = []
         hero_public_first_result_list = []
         hero_public_second_result_list = []
         for hero_index, hero_data in enumerate(data_list):
             hero_feature = hero_data[0]
 
-            img_fet_dim = np.prod(self.hero_seri_vec_split_shape[hero_index][0])
-            vec_fet_dim = np.prod(self.hero_seri_vec_split_shape[hero_index][1])
+            img_fet_dim = np.prod(self.hero_seri_vec_split_shape[0])
+            vec_fet_dim = np.prod(self.hero_seri_vec_split_shape[1])
             feature_img, feature_vec = hero_feature.split(
                 [img_fet_dim, vec_fet_dim], dim=1
             )
 
-            feature_img_shape = list(self.hero_seri_vec_split_shape[0][0])
+            feature_img_shape = list(self.hero_seri_vec_split_shape[0])
             feature_img_shape.insert(0, -1)  # (bs, c, h, w)
-            feature_vec_shape = list(self.hero_seri_vec_split_shape[0][1])
+            feature_vec_shape = list(self.hero_seri_vec_split_shape[1])
             feature_vec_shape.insert(0, -1)
 
             _feature_img = feature_img.reshape(feature_img_shape)
@@ -253,7 +249,7 @@ class NetworkModel(nn.Module):
                 DimConfig.DIM_OF_SOLDIER_1_10, dim=1
             )
             _soldier_1_10 = torch.stack(soldier_1_10, dim=1)
-            soldier_11_20 = soldier_vec_list[0].split(
+            soldier_11_20 = soldier_vec_list[1].split(
                 DimConfig.DIM_OF_SOLDIER_11_20, dim=1
             )
             _soldier_11_20 = torch.stack(soldier_11_20, dim=1)
@@ -284,7 +280,7 @@ class NetworkModel(nn.Module):
             pool_frd_hero, _ = hero_frd_fc_out.max(dim=1)
 
             hero_emy_mlp_out = self.hero_mlp(_hero_emy)
-            hero_emy_fc_out = self.hero_frd_fc(hero_emy_mlp_out)
+            hero_emy_fc_out = self.hero_emy_fc(hero_emy_mlp_out)
             pool_emy_hero, _ = hero_emy_fc_out.max(dim=1)
 
             # soldier_share
@@ -345,9 +341,7 @@ class NetworkModel(nn.Module):
             fc_public_result = torch.cat(
                 [pool_hero_public, hero_public_second_result_list[hero_index]], dim=1
             )
-            for label_index, label_dim in enumerate(
-                self.hero_label_size_list[hero_index]
-            ):
+            for label_index, label_dim in enumerate(self.hero_label_size_list):
                 label_mlp_out = self.label_mlp["hero_label{0}_mlp".format(label_index)](
                     fc_public_result
                 )
@@ -359,12 +353,11 @@ class NetworkModel(nn.Module):
         return all_hero_result_list
 
     def compute_loss(self, data_list, rst_list):
-
         all_hero_loss_list = []
         total_loss = torch.tensor(0.0)
         for hero_index, hero_data in enumerate(data_list):
             # _calculate_single_hero_loss
-            label_task_count = len(self.hero_label_size_list[hero_index])
+            label_task_count = len(self.hero_label_size_list)
             hero_legal_action_flag_list = hero_data[1 : (1 + label_task_count)]
             hero_reward_list = hero_data[
                 (1 + label_task_count) : (2 + label_task_count)
@@ -382,7 +375,7 @@ class NetworkModel(nn.Module):
             ]
             hero_fc_label_result = rst_list[hero_index][:-1]
             hero_value_result = rst_list[hero_index][-1]
-            hero_label_size_list = self.hero_label_size_list[hero_index]
+            hero_label_size_list = self.hero_label_size_list
 
             _hero_legal_action_flag_list = hero_legal_action_flag_list
             _hero_reward_list = [item.squeeze(1) for item in hero_reward_list]
@@ -519,23 +512,9 @@ class NetworkModel(nn.Module):
 
             total_loss = total_loss + _hero_all_loss_list[0]
             all_hero_loss_list.append(_hero_all_loss_list)
-        return total_loss, [
-            total_loss,
-            [
-                all_hero_loss_list[0][1],
-                all_hero_loss_list[0][2],
-                all_hero_loss_list[0][3],
-            ],
-            [
-                all_hero_loss_list[1][1],
-                all_hero_loss_list[1][2],
-                all_hero_loss_list[1][3],
-            ],
-            [
-                all_hero_loss_list[2][1],
-                all_hero_loss_list[2][2],
-                all_hero_loss_list[2][3],
-            ],
+        return total_loss, [total_loss] + [
+            [all_hero_loss_list[y][x + 1] for x in range(3)]
+            for y in range(self.hero_num)
         ]
 
     def format_data(self, datas, inference=False):
@@ -545,9 +524,7 @@ class NetworkModel(nn.Module):
         hero_data_list = []
         for hero_index in range(self.hero_num):
             # calculate length of each frame
-            hero_each_frame_data_length = np.sum(
-                np.array(self.hero_data_split_shape[hero_index])
-            )
+            hero_each_frame_data_length = np.sum(np.array(self.hero_data_split_shape))
             hero_sequence_data_length = (
                 hero_each_frame_data_length * self.lstm_time_steps
             )
@@ -565,9 +542,7 @@ class NetworkModel(nn.Module):
             reshape_sequence_data = sequence_data.reshape(
                 -1, hero_each_frame_data_length
             )
-            hero_data = reshape_sequence_data.split(
-                self.hero_data_split_shape[hero_index], dim=1
-            )
+            hero_data = reshape_sequence_data.split(self.hero_data_split_shape, dim=1)
             hero_data_list.append(hero_data)
         return hero_data_list
 

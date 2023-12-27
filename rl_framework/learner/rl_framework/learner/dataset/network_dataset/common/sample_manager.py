@@ -6,7 +6,7 @@ import sys
 import time
 import numpy as np
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 """
 random repeat get sample

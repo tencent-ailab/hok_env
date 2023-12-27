@@ -9,7 +9,7 @@ from rl_framework.learner.dataset.network_dataset.common.batch_process import (
 )
 from rl_framework.learner.dataset.network_dataset.common.sample_manager import MemBuffer
 from rl_framework.mem_pool.zmq_mem_pool_server.zmq_mem_pool import ZMQMEMPOOL
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class NetworkDataset(object):

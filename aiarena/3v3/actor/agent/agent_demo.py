@@ -10,13 +10,13 @@ import numpy as np
 from agent.agent import Agent as BaseAgent
 
 
-pred_ret_shape = [(1, 162), (1, 162), (1, 162)]
+pred_ret_shape = [(1, 162)] * 3
 lstm_cell_shape = [(1, 16), (1, 16)]
 
 tower_locations = [48020, 6020]
 
 # Use log to print information on the terminal
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 from hok.hok3v3.lib.lib3v3 import (
     PLAYERCAMP_1,
@@ -110,6 +110,9 @@ class Agent(BaseAgent):
         # A list which is used to keep the counterpart index of monster in target dimension
         self.monster_idx_offset = []
 
+    def _predict_process_torch(self, features, frame_state, runtime_ids):
+        return self._predict_process(features, frame_state, runtime_ids)
+
     def _predict_process(self, features, frame_state, runtime_ids):
         # predict using model
         # pred_ret, lstm_info = super()._predict_process(
@@ -151,7 +154,7 @@ class Agent(BaseAgent):
             for loc in location:
                 x_diff = loc[0] - ego_loc_x
                 z_diff = loc[1] - ego_loc_z
-                dis_diff_hero2target = np.sqrt(x_diff ** 2 + z_diff ** 2)
+                dis_diff_hero2target = np.sqrt(x_diff**2 + z_diff**2)
 
                 distances.append(dis_diff_hero2target)
 

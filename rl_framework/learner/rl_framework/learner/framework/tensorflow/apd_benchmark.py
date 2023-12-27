@@ -11,7 +11,7 @@ from rl_framework.learner.framework.common.config_control import ConfigControl
 from rl_framework.learner.framework.tensorflow.gradient_fusion import NodeInfo
 from rl_framework.learner.framework.common.log_manager import LogManager
 from rl_framework.learner.framework.tensorflow.model_manager import ModelManager
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.client import timeline
 from tensorflow.python.util import nest
@@ -58,6 +58,7 @@ class Benchmark(object):
         self.noise_scale_times = 0
         self.skip_update_times = 0
         self.model_manager = model_manager
+        self._last_save_model_time = 0
         LOG.info("init finished")
 
     def _build_model(self):
@@ -116,13 +117,22 @@ class Benchmark(object):
                 self.config_manager.save_model_dir,
                 self.config_manager.send_model_dir,
             )
+            self._last_save_model_time = time.time()
         self.sess.run(self.enqueue_ops)
         self.init_global_step = self.sess.run(self.global_step)
         self.local_step = self.init_global_step
 
+    def _check_save_model(self):
+        return (
+            self.local_step % self.config_manager.save_model_steps == 0
+            or time.time() - self._last_save_model_time
+            > self.config_manager.save_model_seconds
+        )
+
     def _do_train(self):
         LOG.info("Start training...")
         start_time = time.time()
+        first_step = True
         for _ in range(self.config_manager.warmup_steps, self.config_manager.max_steps):
             batch_begin = time.time()
             if self.slow_time > 0:
@@ -146,7 +156,9 @@ class Benchmark(object):
 
             batch_duration = time.time() - batch_begin
             self.local_step += 1
-            if self.local_step % self.config_manager.save_model_steps != 0:
+            if first_step:
+                first_step = False
+            else:
                 self.step_train_times.append(batch_duration)
 
             # if (self.node_info.local_rank == self.node_info.local_size - 1) and \
@@ -167,15 +179,13 @@ class Benchmark(object):
                 results["batch_duration"] = batch_duration
                 self.log_manager.print_result(results)
 
-            if (
-                self.local_step % self.config_manager.save_model_steps == 0
-                and self.is_chief_rank
-            ):
+            if self._check_save_model() and self.is_chief_rank:
                 _, msg = self.model_manager.save_model(
                     self.sess,
                     self.config_manager.save_model_dir,
                     self.config_manager.send_model_dir,
                 )
+                self._last_save_model_time = time.time()
                 LOG.info(msg)
 
         images_per_sec = (
@@ -193,6 +203,7 @@ class Benchmark(object):
                 self.config_manager.save_model_dir,
                 self.config_manager.send_model_dir,
             )
+            self._last_save_model_time = time.time()
         self.sv.stop()
 
     def _benchmark_run(self):

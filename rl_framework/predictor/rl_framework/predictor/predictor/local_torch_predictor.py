@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import torch
 import os
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class LocalTorchPredictor(object):

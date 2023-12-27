@@ -1,5 +1,5 @@
 import numpy as np
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 from agent import Agent as AgentBase
 
@@ -43,7 +43,7 @@ class Agent(AgentBase):
             [
                 len(HERO_ID_INDEX_DICT),
             ],
-            dtype=np.float,
+            dtype=np.float32,
         )
         if HERO_ID_INDEX_DICT.get(hero_id) is not None:
             hero_id_vec[HERO_ID_INDEX_DICT[hero_id]] = 1

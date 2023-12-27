@@ -2,7 +2,7 @@ import os
 import requests
 from yaml import full_load
 from process_base import ProcessBase
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 
 class InfluxdbExporterProcess(ProcessBase):

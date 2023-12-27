@@ -8,7 +8,7 @@ import traceback
 
 import numpy as np
 from rl_framework.common.logging import log_time_func, g_log_time
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"

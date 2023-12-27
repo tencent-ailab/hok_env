@@ -1,13 +1,11 @@
 import os
 import time
-import logging
 from enum import Enum
 
 import numpy as np
 
 import hok.hok1v1.lib.interface as interface
-
-LOG = logging.getLogger(__file__)
+from hok.common.log import logger as LOG
 
 default_config_path = os.path.join(os.path.dirname(__file__), "config.dat")
 
@@ -49,9 +47,14 @@ class AIServer:
     def run(self):
         LOG.info("socket addr %s" % (self.addr))
         self.zmq_server = self.lib_processor.server_manager.Add(self.addr)
-        rc = self.zmq_server.Reset(self.addr)
-        if rc < 0:
-            raise Exception("zmq_server.Reset failed")
+
+        while True:
+            rc = self.zmq_server.Reset(self.addr)
+            if rc < 0:
+                LOG.warning(f"zmq_server.Reset failed({rc}), sleep and retry...")
+                time.sleep(1)
+                continue
+            break
 
         while True:
             try:
@@ -62,7 +65,7 @@ class AIServer:
                     time.sleep(1)
                     rc = self.zmq_server.Reset(self.addr)
                     if rc < 0:
-                        LOG.exception("zmq_server.Reset failed")
+                        LOG.warning(f"zmq_server.Reset failed({rc}), sleep and retry...")
                         continue
                     break
 
@@ -87,26 +90,26 @@ class AIServer:
             # formulation check
             if isinstance(action, (tuple, list)):
                 if not len(action) == 6:
-                    LOG.warn("action[{}] length incorrect: {}, but expect 6.")
+                    LOG.warning("action[{}] length incorrect: {}, but expect 6.")
                     return None
                 action = np.array(action)
             elif isinstance(action, np.ndarray):
                 if not (len(action.shape) == 1 and action.shape[0] == 6):
-                    LOG.warn(
+                    LOG.warning(
                         "action[{}] shape incorrect: {}, but expect [6].".format(
                             i, action.shape
                         )
                     )
                     return None
             else:
-                LOG.warn("invalid action[{}] type of {}".format(i, type(action)))
+                LOG.warning("invalid action[{}] type of {}".format(i, type(action)))
                 return None
 
             old_action = action
             action = []
             for j, act in enumerate(old_action):
                 if not (0 <= act < self.action_size[j]):
-                    LOG.warn(
+                    LOG.warning(
                         "Action[{}] {}: {} not in [0,{})".format(
                             i, j, act, self.action_size[j]
                         )
@@ -137,14 +140,14 @@ class AIServer:
                 parse_state != interface.PARSE_CONTINUE
                 and parse_state != interface.PARSE_NONE_ACTION
             ):
-                LOG.warn("recv failed: %s", parse_state)
+                LOG.warning("recv failed: %s", parse_state)
                 return
 
             req_pb = None
             if parse_state == interface.PARSE_CONTINUE:
                 req_pb = self.lib_processor.GetAIFrameState(sgame_id)
                 if req_pb is None:
-                    LOG.warn("GetAIFrameState failed")
+                    LOG.warning("GetAIFrameState failed")
                     return
 
             ret = self.lib_processor.FeatureProcess(parse_state, sgame_id)
@@ -193,14 +196,14 @@ class AIServer:
                     rp_actions, sgame_id
                 )
                 if ret_code != interface.PROCESS_ACTION_SUCCESS:
-                    LOG.warn("process action failed: {}".format(ret_code))
+                    LOG.warning("process action failed: {}".format(ret_code))
                     return
 
                 sent = self._send(ResponceType.CACHED, resp_id, sgame_id)
         finally:
             # 在冲突退出, 或者其他错误情况, 回空包以保证zmq的状态机正确
             if not sent:
-                LOG.warn("not sent, send empty rsp")
+                LOG.warning("not sent, send empty rsp")
                 self._send_empty_rsp()
 
     def _send_empty_rsp(self):
@@ -217,11 +220,11 @@ class AIServer:
         elif send_type == ResponceType.CACHED:
             ret = self.lib_processor.SendResp(self.addr, sgame_id, msg_id)
         else:
-            LOG.warn("Unknown ResponceType: %s" % send_type)
+            LOG.warning("Unknown ResponceType: %s" % send_type)
             return False
 
         if ret != interface.SEND_SUCCESS:
-            LOG.warn("Send resp failed: %s" % ret)
+            LOG.warning("Send resp failed: %s" % ret)
             return False
 
         return True

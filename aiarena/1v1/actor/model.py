@@ -10,6 +10,10 @@ def get_model_class(backend):
         torch.set_num_interop_threads(1)
     elif backend == "tensorflow":
         from common.algorithm_tf import Algorithm
+    else:
+        raise NotImplementedError(
+            "check ModelConfig, backend=['tensorflow', 'pytorch']"
+        )
 
     # Singleton Pattern
     @Singleton

@@ -10,7 +10,7 @@ import collections
 import numpy as np
 import tensorflow as tf
 from rl_framework.learner.framework.common.config_control import ConfigControl
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 #  The class describes some information about the node

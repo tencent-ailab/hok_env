@@ -5,7 +5,7 @@ from enum import Enum
 import numpy as np
 
 from hok.common.log import log_time
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 from hok.hok3v3.action_space import DumpProbs
 import hok.hok3v3.lib.lib3v3 as interface  # TODO 是否有办法剥离? 或者通过lib_processor访问?
@@ -127,12 +127,13 @@ class AIServer:
         """
         feature_process: process game state
 
-        :return: continue_process flag and p_game_data
+        :return: continue_process flag, features, frame_state
         """
         parse_state, sgame_id = self.lib_processor.RecvAIFrameState(self.addr)
         sent = False
         continue_process = False
-        p_game_data = None
+        features = []
+        frame_state = None
         try:
             if parse_state != int(interface.ReturnCode.PARSE_CONTINUE):
                 raise Exception("recv failed: %s" % parse_state)
@@ -144,9 +145,10 @@ class AIServer:
             if p_game_data is None:
                 raise Exception("GetAIFrameState failed: p_game_data is None")
 
-            req_pb = p_game_data.frame_state
-            if req_pb is None:
-                raise Exception("GetAIFrameState failed: req_pb is None")
+            features = p_game_data.feature_process
+            frame_state = p_game_data.frame_state
+            if frame_state is None:
+                raise Exception("GetAIFrameState failed: frame_state is None")
 
             if ret_code == int(interface.ReturnCode.FEATURE_PROCESS_SEND_CACHED):
                 # Note: Normal button up or none action for non-predict frame
@@ -162,23 +164,28 @@ class AIServer:
                 LOG.error("not sent, send empty rsp")
                 self.send_empty_rsp()
 
-        return continue_process, p_game_data
+        return continue_process, features, frame_state
 
-    def result_process(self, probs, p_game_data):
+    def result_process(self, probs, features, frame_state):
         ok, rp_actions = self._format_actions([probs])
         if not ok:
             raise Exception("format action failed")
 
-        req_pb = p_game_data.frame_state
-
         ret_code, resp_id = self.lib_processor.ResultProcess(
-            rp_actions, req_pb.sgame_id
+            rp_actions, frame_state.sgame_id
         )
         if ret_code != int(interface.ReturnCode.PROCESS_ACTION_SUCCESS):
             raise Exception("process action failed: {}".format(ret_code))
 
         LOG.debug("ResultProcess send cached")
-        return self._send(ResponseType.CACHED, resp_id, req_pb.sgame_id)
+        p_game_data = self.lib_processor.GetGameData(frame_state.sgame_id)
+        if p_game_data is None:
+            raise Exception("GetAIFrameState failed: p_game_data is None")
+
+        return (
+            self._send(ResponseType.CACHED, resp_id, frame_state.sgame_id),
+            p_game_data.result_process,
+        )
 
 
 class BattleServer(AIServer):
@@ -198,18 +205,16 @@ class BattleServer(AIServer):
     def clear_game(self, sgame_id):
         self.lib_processor.Reset([sgame_id])
 
-    def _feature(self, p_game_data):
-        return [state.data[0] for state in p_game_data.feature_process]
-
-    def _result(self, p_game_data):
-        return [x.data.game_state_info for x in p_game_data.result_process]
-
     def run(self):
         LOG.info("socket addr %s" % (self.addr))
         zmq_server = self.lib_processor.server_manager.Add(self.addr)
-        rc = zmq_server.Reset(self.addr)
-        if rc < 0:
-            raise Exception("zmq_server.Reset failed")
+        while True:
+            rc = zmq_server.Reset(self.addr)
+            if rc < 0:
+                LOG.warning(f"zmq_server.Reset failed({rc}), sleep and retry...")
+                time.sleep(1)
+                continue
+            break
 
         while True:
             try:
@@ -220,30 +225,28 @@ class BattleServer(AIServer):
                     time.sleep(1)
                     rc = zmq_server.Reset(self.addr)
                     if rc < 0:
-                        LOG.exception("zmq_server.Reset failed")
+                        LOG.warning(
+                            f"zmq_server.Reset failed({rc}), sleep and retry..."
+                        )
                         continue
                     break
 
     def process(self):
-        continue_process, p_game_data = self.recv_and_feature_process()
-
-        req_pb = p_game_data.frame_state
+        continue_process, features, frame_state = self.recv_and_feature_process()
 
         if continue_process:
-            features = self._feature(p_game_data)
             sent = False
             try:
                 # TODO hongyangqin save lstm_info
-                probs, lstm_info = self.agent.predict_process(features, req_pb)
-                sent = self.result_process(probs, p_game_data)
+                probs, lstm_info = self.agent.predict_process(features, frame_state)
+                sent, results = self.result_process(probs, features, frame_state)
 
                 if self.enable_dump_probs:
                     try:
-                        DumpProbs(
-                            req_pb, features, self._result(p_game_data)
-                        ).save_to_file(
+                        DumpProbs(frame_state, features, results).save_to_file(
                             os.path.join(
-                                self.dump_probs_dir, "{}.bin".format(req_pb.sgame_id)
+                                self.dump_probs_dir,
+                                "{}.bin".format(frame_state.sgame_id),
                             )
                         )
                     except Exception:
@@ -253,7 +256,9 @@ class BattleServer(AIServer):
                     LOG.warning("not sent, send empty rsp2")
                     self.send_empty_rsp()
 
-        if req_pb.gameover:
-            LOG.info("game done: {}, {}".format(req_pb.sgame_id, req_pb.frame_no))
+        if frame_state.gameover:
+            LOG.info(
+                "game done: {}, {}".format(frame_state.sgame_id, frame_state.frame_no)
+            )
             # 释放旧sgame_id的资源
-            self.clear_game(req_pb.sgame_id)
+            self.clear_game(frame_state.sgame_id)

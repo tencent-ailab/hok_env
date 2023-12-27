@@ -6,7 +6,7 @@ import time
 import zmq
 
 from rl_framework.mem_pool.mem_pool_api.mem_pool_protocol import CmdType
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class ZMQMEMPOOL(object):

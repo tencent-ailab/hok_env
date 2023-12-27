@@ -28,7 +28,6 @@ class RLDataInfo:
         self.next_value = 0
         self.next_value2 = 0
         self.lstm_info = None
-        self.all_hero_reward = None
 
     def struct_to_pb(self, off_policy_rl_info):
         off_policy_rl_info.frame_no = self.frame_no

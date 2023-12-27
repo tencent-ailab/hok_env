@@ -3,7 +3,7 @@ import socket
 from enum import Enum
 import lz4.block
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class SamplingStrategy(Enum):

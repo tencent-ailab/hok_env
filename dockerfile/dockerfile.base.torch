@@ -1,7 +1,19 @@
 ARG BASE_IMAGE=common_base_py38
 
 FROM ${BASE_IMAGE} as cpu
-RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip3 install --no-cache-dir torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
 
 FROM ${BASE_IMAGE} as gpu
-RUN pip3 install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cu116
+# torch
+RUN pip3 install --no-cache-dir nvidia-nvtx-cu11==11.7.91
+RUN pip3 install --no-cache-dir nvidia-nccl-cu11==2.14.3
+RUN pip3 install --no-cache-dir nvidia-cusparse-cu11==11.7.4.91
+RUN pip3 install --no-cache-dir nvidia-cublas-cu11==11.10.3.66
+RUN pip3 install --no-cache-dir nvidia-cusolver-cu11==11.4.0.1
+RUN pip3 install --no-cache-dir nvidia-curand-cu11==10.2.10.91
+RUN pip3 install --no-cache-dir nvidia-cufft-cu11==10.9.0.58
+RUN pip3 install --no-cache-dir nvidia-cudnn-cu11==8.5.0.96
+RUN pip3 install --no-cache-dir nvidia-cuda-cupti-cu11==11.7.101
+RUN pip3 install --no-cache-dir nvidia-cuda-runtime-cu11==11.7.99
+RUN pip3 install --no-cache-dir nvidia-cuda-nvrtc-cu11==11.7.99
+RUN pip3 install --no-cache-dir torch==2.0.1

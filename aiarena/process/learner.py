@@ -10,7 +10,6 @@ sys.path.append("/")
 
 from aiarena.code.learner.train import run, config_path
 from aiarena.process.process_base import PyProcessBase
-from aiarena.code.common.config import Config
 from rl_framework.learner.framework.common.config_control import ConfigControl
 
 
@@ -26,7 +25,7 @@ class LearnerProcess(PyProcessBase):
         batch_size=1,
         store_max_sample=20,
         use_xla=False,
-        config=Config,
+        model_config=None,
     ) -> None:
         super().__init__()
         self.mem_pool_port_list = mem_pool_port_list or []
@@ -40,7 +39,7 @@ class LearnerProcess(PyProcessBase):
         self.store_max_sample = store_max_sample
         self.use_xla = use_xla
 
-        self.config = config
+        self.model_config = model_config
 
     def _get_config(self):
         config = configparser.ConfigParser()
@@ -48,8 +47,8 @@ class LearnerProcess(PyProcessBase):
 
         # overwrite config
         config.set("main", "ports", json.dumps(self.mem_pool_port_list))
-        config.set("main", "backend", self.config.backend)
-        if self.config.backend == "pytorch":  # TODO
+        config.set("main", "backend", self.model_config.backend)
+        if self.model_config.backend == "pytorch":  # TODO
             config.set("main", "distributed_backend", "none")
 
         config.set("main", "display_every", str(self.display_every))
@@ -58,7 +57,7 @@ class LearnerProcess(PyProcessBase):
         config.set("main", "batch_size", str(self.batch_size))
         config.set("dataset", "store_max_sample", str(self.store_max_sample))
         config.set("model", "use_xla", str(self.use_xla))
-        config.set("model", "use_init_model", str(self.config.use_init_model))
+        config.set("model", "use_init_model", str(self.model_config.use_init_model))
 
         return config
 
@@ -74,7 +73,7 @@ class LearnerProcess(PyProcessBase):
         config_manager = ConfigControl(config_path)
 
         self.proc = Process(
-            target=run, args=(self.config, config_manager, self.single_test)
+            target=run, args=(self.model_config, config_manager, self.single_test)
         )
         self.proc.start()
 

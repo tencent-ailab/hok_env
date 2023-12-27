@@ -31,14 +31,14 @@ g_log_time = {
 }
 
 
-def setup_logger(filename=None):
+def setup_logger(filename=None, level=None):
     logger.remove()
     if filename:
-        logger.add(sys.stdout, level="ERROR")
+        logger.add(sys.stdout, level=(level or "ERROR"))
         os.makedirs(os.path.dirname(filename), exist_ok=True)
-        logger.add(filename, rotation="50 MB", level="INFO")
+        logger.add(filename, rotation="50 MB", level=(level or "INFO"))
     else:
-        logger.add(sys.stdout, level="INFO")
+        logger.add(sys.stdout, level=(level or "INFO"))
 
 
 # log_time
@@ -71,35 +71,3 @@ def log_time_func(text, end=False):
             g_log_time[text][-1] = t
     if not end:
         g_log_time[text].append(now)
-
-
-def get_logger():
-    return logger
-
-
-def debug(msg, *args, **kwargs):
-    logger.debug(msg, *args, **kwargs)
-
-
-def info(msg, *args, **kwargs):
-    logger.info(msg, *args, **kwargs)
-
-
-def warning(msg, *args, **kwargs):
-    logger.warning(msg, *args, **kwargs)
-
-
-def error(msg, *args, **kwargs):
-    logger.error(msg, *args, **kwargs)
-
-
-def critical(msg, *args, **kwargs):
-    logger.critical(msg, *args, **kwargs)
-
-
-def exception(msg, *args, **kwargs):
-    logger.exception(msg, *args, **kwargs)
-
-
-def log(level, msg, *args, **kwargs):
-    logger.log(level, msg, *args, **kwargs)

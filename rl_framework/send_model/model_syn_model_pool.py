@@ -3,7 +3,7 @@ import os
 import sys
 from model_syn_base import ModelSynBase
 from rl_framework.model_pool import ModelPoolAPIs
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 class ModelSynModelPool(ModelSynBase):
     def __init__(self, address):

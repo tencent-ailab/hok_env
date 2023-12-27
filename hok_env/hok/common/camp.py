@@ -3,31 +3,51 @@ import os
 import json
 import base64
 import itertools
+import threading
 
 HERO_DICT = {
+    "xiaoqiao": 106,
+    "zhaoyun": 107,
+    "mozi": 108,
     "sunshangxiang": 111,
     "luban": 112,
+    "zhongwuyan": 117,
+    "bianque": 119,
+    "baiqi": 120,
     "miyue": 121,
     "lvbu": 123,
+    "caocao": 128,
+    "gongbenwuzang": 130,
     "libai": 131,
     "makeboluo": 132,
     "direnjie": 133,
+    "xiangyu": 135,
     "guanyu": 140,
     "diaochan": 141,
     "luna": 146,
     "hanxin": 150,
+    "wangzhaojun": 152,
     "huamulan": 154,
+    "ailin": 155,
     "buzhihuowu": 157,
     "jvyoujing": 163,
+    "sunwukong": 167,
     "houyi": 169,
     "liyuanfang": 173,
+    "yangyuhuan": 176,
     "yuji": 174,
     "zhongkui": 175,
     "ganjiangmoye": 182,
+    "guiguzi": 189,
+    "zhugeliang": 190,
+    "huangzhong": 192,
     "kai": 193,
+    "sulie": 194,
     "bailishouyue": 196,
     "gongsunli": 199,
     "peiqinhu": 502,
+    "sunce": 510,
+    "yao": 522,
     "shangguanwaner": 513,
 }
 
@@ -36,6 +56,17 @@ class GameMode:
     G1v1 = "1v1"
     G3v3 = "3v3"
     G5v5dld = "5v5dld"
+
+
+def thread_safe_iterator(iterator):
+    lock = threading.Lock()
+    while True:
+        try:
+            with lock:
+                value = next(iterator)
+        except StopIteration:
+            return
+        yield value
 
 
 # 循环返回camps, 每次大循环前对camps进行shuffle
@@ -82,7 +113,20 @@ def camp_iterator_1v1_roundrobin_camp_heroes(hero_ids=None):
     )
 
 
-# 5v5大乱斗 按英雄列表循环对战
+# 3v3 按英雄列表循环对战（候选阵容）
+def camp_iterator_3v3_roundrobin_camp_heroes(camp_hero_ids=None):
+    if camp_hero_ids is None:
+        camp_hero_ids = [
+            [157, 174, 167],  # 不知火舞、虞姬、孙悟空 —— 比较全面的阵容缺点没有硬控 (高爆法有POKE)
+        ]
+
+    return camp_iterator_roundrobin_camp_heroes(
+        GameMode.G3v3,
+        [[{"hero_id": hero_id} for hero_id in hero_ids] for hero_ids in camp_hero_ids],
+    )
+
+
+# 5v5大乱斗 按英雄列表循环对战（候选阵容）
 def camp_iterator_5v5dld_roundrobin_camp_heroes(camp_hero_ids=None):
     if camp_hero_ids is None:
         camp_hero_ids = [
@@ -117,8 +161,7 @@ def camp_iterator_3v3_roundrobin_lane_heroes(lane_hero_ids=None):
 def _get_default_config_str(default_mode):
     if default_mode == GameMode.G3v3:
         default_config_str = base64.b64encode(
-            # 3v3 多阵容，每条分路两个候选英雄，以下为第三届复赛及决赛配置（共 8 套阵容）
-            b'[[190,141], [173,111], [107,117]]'
+            b'[[157, 174, 167]]',
         ).decode()
     elif default_mode == GameMode.G5v5dld:
         default_config_str = base64.b64encode(
@@ -134,7 +177,7 @@ def _get_default_config_str(default_mode):
 
 def _get_default_driver(default_mode):
     if default_mode == GameMode.G3v3:
-        default_driver = "3v3_roundrobin_lane_heroes"
+        default_driver = "3v3_roundrobin_camp_heroes"
     elif default_mode == GameMode.G5v5dld:
         default_driver = "5v5dld_roundrobin_camp_heroes"
     else:
@@ -175,6 +218,8 @@ def camp_iterator(
         return camp_iterator_3v3_roundrobin_lane_heroes(driver_config)
     elif driver == "5v5dld_roundrobin_camp_heroes":
         return camp_iterator_5v5dld_roundrobin_camp_heroes(driver_config)
+    elif driver == "3v3_roundrobin_camp_heroes":
+        return camp_iterator_3v3_roundrobin_camp_heroes(driver_config)
     else:
         raise Exception("Unknown camp driver: %s" % driver)
 

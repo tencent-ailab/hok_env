@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import collections
-import random
 
 import numpy as np
 from rl_framework.common.logging import log_time
@@ -8,13 +7,13 @@ from rl_data_info import RLDataInfo
 
 from rl_framework.mem_pool import MemPoolAPIs
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class SampleManager:
     def __init__(
         self,
-        mem_pool_addr_list,
+        mem_pool_addr,
         mem_pool_type,
         num_agents,
         game_id=None,
@@ -26,11 +25,8 @@ class SampleManager:
     ):
         self.single_test = single_test
         # connect to mem pool
-        # deal with multiple mem_pool, randomly select one to connect!
-        LOG.info("mempool list: {}".format(mem_pool_addr_list))
-        idx = random.randint(0, len(mem_pool_addr_list) - 1)
-        mem_pool_addr = mem_pool_addr_list[idx]
-        LOG.info("connect to mempool: {}".format(mem_pool_addr))
+        mem_pool_addr = mem_pool_addr
+        LOG.info("select mempool: {}".format(mem_pool_addr))
         ip, port = mem_pool_addr.split(":")
         self.m_mem_pool_ip = ip
         self.m_mem_pool_port = port

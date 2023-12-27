@@ -3,7 +3,7 @@ import tensorflow as tf
 from common.config import DimConfig
 from common.config import Config
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class Algorithm:

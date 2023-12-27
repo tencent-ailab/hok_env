@@ -4,9 +4,10 @@
 """
 import os
 import time
+import numpy as np
 
 from rl_framework.common.logging import g_log_time, log_time, log_time_func
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -23,7 +24,6 @@ class Actor:
         monitor_logger=None,
         send_sample_frame=963,
     ):
-        self.m_task_uuid = "TODO TASK_UUID"
         self.m_config_id = id
 
         self.agents = agents
@@ -61,7 +61,9 @@ class Actor:
 
         game_info = {}
         is_gameover = False
-        req_pb = None
+        frame_state = None
+        reward_game = [[], []]
+
         while not is_gameover:
             log_time_func("one_frame")
 
@@ -69,67 +71,60 @@ class Actor:
             # while True:
             is_send = False
             reward_camp = [[], []]
-            all_hero_reward_camp = [[], []]
             for i, agent in enumerate(self.agents):
                 if use_common_ai[i]:
                     LOG.debug(f"agent {i} is common_ai")
                     continue
 
-                continue_process, features, p_game_data = self.env.step_feature(i)
-                req_pb = p_game_data.frame_state
-                if req_pb.gameover:
-                    game_info["length"] = req_pb.frame_no
+                continue_process, features, frame_state = self.env.step_feature(i)
+
+                if frame_state.gameover:
+                    game_info["length"] = frame_state.frame_no
                     is_gameover = True
 
                 if not continue_process:
                     continue
 
                 if first_frame_no < 0:
-                    first_frame_no = req_pb.frame_no
+                    first_frame_no = frame_state.frame_no
                     LOG.info("first_frame_no %d" % first_frame_no)
 
-                for hero_idx in range(len(features)):
-                    reward_camp[i].append(features[hero_idx].reward)
-                    all_hero_reward_camp[i].append(
-                        features[hero_idx].all_hero_reward_info
-                    )
+                probs, lstm_info = agent.predict_process(features, frame_state)
+                ok, results = self.env.step_action(i, probs, features, frame_state)
+                if not ok:
+                    raise Exception("step action failed")
 
-                sample = {}
-                probs, lstm_info = agent.predict_process(features, req_pb)
-                sample = self.env.step_action(
-                    i, features, probs, p_game_data, lstm_info
-                )
+                sample = agent.sample_process(features, results, lstm_info, frame_state)
+
+                reward_game[i].append(sample["reward_s"])
 
                 # skip save sample if not latest model
                 if not agent.is_latest_model:
                     continue
 
-                is_send = req_pb.gameover or (
-                    ((req_pb.frame_no - first_frame_no) % self.send_sample_frame == 0)
-                    and (req_pb.frame_no > first_frame_no)
+                is_send = frame_state.gameover or (
+                    (
+                        (frame_state.frame_no - first_frame_no) % self.send_sample_frame
+                        == 0
+                    )
+                    and (frame_state.frame_no > first_frame_no)
                 )
 
                 if not is_send:
-                    self.sample_manager.save_sample(
-                        **sample, agent_id=i, uuid=self.m_task_uuid
-                    )
+                    self.sample_manager.save_sample(**sample, agent_id=i)
                 else:
                     LOG.info(
-                        f"save_last_sample frame[{req_pb.frame_no}] req_pb.gameover[{req_pb.gameover}]"
+                        f"save_last_sample frame[{frame_state.frame_no}] frame_state.gameover[{frame_state.gameover}]"
                     )
-                    if req_pb.gameover:
+                    if frame_state.gameover:
                         self.sample_manager.save_last_sample(
-                            agent_id=i,
-                            reward=reward_camp[i],
-                            all_hero_reward_s=all_hero_reward_camp[i],
-                            # TODO hongyangqin refactor reward_manager
+                            agent_id=i, reward=sample["reward_s"]
                         )
                     else:
                         self.sample_manager.save_last_sample(
                             agent_id=i,
-                            reward=reward_camp[i],
+                            reward=sample["reward_s"],
                             value_s=sample["value_s"],
-                            all_hero_reward_s=all_hero_reward_camp[i],
                         )
 
             if is_send or is_gameover:
@@ -142,13 +137,13 @@ class Actor:
         log_time_func("one_frame", end=True)
         self.env.close_game()
 
-        if not req_pb:
+        if not frame_state:
             return
 
         # process game info
         loss_camp = None
         # update camp information.
-        for organ in req_pb.organ_list:
+        for organ in frame_state.organ_list:
             if organ.type == 24 and organ.hp <= 0:
                 loss_camp = organ.camp
 
@@ -167,7 +162,7 @@ class Actor:
             LOG.info("camp%d_agent:%d win:%d" % (agent_camp, i, agent_win))
 
             LOG.info("---------- camp%d hero_info ----------" % agent_camp)
-            for hero_state in req_pb.hero_list:
+            for hero_state in frame_state.hero_list:
                 if agent_camp != hero_state.camp:
                     continue
 
@@ -194,6 +189,7 @@ class Actor:
                 hurt_per_frame = 0
                 hurtH_per_frame = 0
                 hurtBH_per_frame = 0
+                totalHurtToHero = 0
 
                 agent_camp = i + 1
                 agent_win = 0
@@ -201,7 +197,7 @@ class Actor:
                     agent_win = 1
 
                 hero_idx = 0
-                for hero_state in req_pb.hero_list:
+                for hero_state in frame_state.hero_list:
                     if agent_camp == hero_state.camp:
                         hero_idx += 1
                         money_per_frame += hero_state.moneyCnt / game_info["length"]
@@ -215,6 +211,7 @@ class Actor:
                         hurtBH_per_frame += (
                             hero_state.totalBeHurtByHero / game_info["length"]
                         )
+                        totalHurtToHero += hero_state.totalHurtToHero
 
                 game_info["money_per_frame"] = money_per_frame / hero_idx
                 game_info["kill"] = kill / hero_idx
@@ -224,6 +221,8 @@ class Actor:
                 game_info["hurtH_per_frame"] = hurtH_per_frame / hero_idx
                 game_info["hurtBH_per_frame"] = hurtBH_per_frame / hero_idx
                 game_info["win"] = agent_win
+                game_info["reward"] = np.sum(reward_game[i])
+                game_info["totalHurtToHero"] = totalHurtToHero / hero_idx
 
             if self.monitor_logger:
                 self.monitor_logger.info(game_info)

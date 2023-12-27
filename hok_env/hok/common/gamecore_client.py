@@ -1,12 +1,13 @@
 import time
 import requests
 
-import hok.common.log as LOG
+from hok.common.log import logger as LOG
 
 
 class SimulatorType:
     Remote = "remote"  # 随机初始对战
-    Repeat = "repeat"  # 从scene列表中回放对局到一定帧再对战, 当scene列表为空时, 会出错
+    Repeat = "repeat"  # 优先从scene列表中回放对局到一定帧再对战, 当scene列表为空时, 采用remote模式
+    RepeatOnly = "repeat_only"  # 从scene列表中回放对局到一定帧再对战, 当scene列表为空时, 会出错
     RemoteRepeat = "remote_repeat"  # 以一定概率(gamecore-server启动配置)选择remote或repeat模式, 当scene为空时, 采用remote模式
 
 
@@ -26,10 +27,19 @@ class GamecoreClient:
         self.simulator_type = simulator_type
 
     def start_game(
-        self, runtime_id, servers, camp_hero_list, task_id=None, eval_mode=False
+        self,
+        runtime_id,
+        servers,
+        camp_hero_list,
+        task_id=None,
+        eval_mode=False,
+        extra_abs_key_info=None,
     ):
         """
         当eval_mode为true时, 使用remote模式, 不使用repeat模式
+        extra_abs_key_info:
+            - 当保存对局的abs到scene中(用于回放)时, 附加额外的key信息
+            - 当进行对局回放时, 根据key信息过滤筛选回放的abs
         """
         # camp_hero_list = {
         #     "mode": "1v1",
@@ -45,6 +55,9 @@ class GamecoreClient:
 
         if self.max_frame_num > 0:
             start_config["max_frame_num"] = self.max_frame_num
+
+        if extra_abs_key_info:
+            start_config["extra_abs_key_info"] = extra_abs_key_info
 
         # 可选参数 task_id, 用于gamecore-server上报对局信息
         if task_id:
@@ -134,3 +147,37 @@ class GamecoreClient:
             raise Exception(
                 "Send request failed: {} {} {}".format(url, data, resp.content)
             )
+
+    def task_list(self):
+        """
+        Get all task ids in gamecore server
+        Return list of task id
+        """
+        ret = self._send_http_request("taskList", {})
+        return ret["data"].get("task_ids") or []
+
+    def task_detail(self, task_id):
+        """
+        Get all gamestate detail of taks_id
+        return list of gamestate
+        """
+        data = {
+            "task_id": task_id,
+        }
+        ret = self._send_http_request("taskDetail", data)
+        return ret["data"].get("game_states") or []
+
+    def task_remove(self, task_id):
+        """
+        Remove all gamestate of task_id
+        """
+        data = {
+            "task_id": task_id,
+        }
+        self._send_http_request("taskRemove", data)
+
+    def task_clear(self):
+        """
+        Clear all gamestate of all task
+        """
+        self._send_http_request("taskClear", {})

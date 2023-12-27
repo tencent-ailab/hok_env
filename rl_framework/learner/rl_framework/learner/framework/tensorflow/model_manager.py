@@ -4,7 +4,7 @@ import os
 from multiprocessing import Process, Queue
 
 import tensorflow as tf
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 
 class ModelManager(object):

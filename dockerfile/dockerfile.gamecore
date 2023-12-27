@@ -38,6 +38,8 @@ COPY ./license.dat /rl_framework/gamecore/core_assets/
 # Stage3: copy gamecore-server scripts to final image
 FROM ${INTERNAL_IMAGE}
 
+RUN pip3 install --no-cache-dir requests
+
 COPY ./aiarena/remote-gc-server /rl_framework/remote-gc-server
 RUN chmod a+x /rl_framework/gamecore/* /rl_framework/gamecore/bin/*
 ENV GAMECORE_PATH=/rl_framework/gamecore

@@ -1,4 +1,5 @@
 ARG BASE_IMAGE=cpu_base
+ARG DEV_BASE=dev_base
 
 FROM ${BASE_IMAGE} as dev_base
 
@@ -7,14 +8,22 @@ RUN wget https://github.com/prometheus/influxdb_exporter/releases/download/v0.10
     && cp influxdb_exporter-0.10.0.linux-amd64/influxdb_exporter /usr/bin/ \
     && rm -rf influxdb_exporter-0.10.0.linux-amd64*
 
-RUN sed -i "s/;http_port =.*/http_port = 8081/g" /etc/grafana/grafana.ini
-
-# TODO hongyangqin move to base image
 RUN apt update && \
-    apt install -y lrzsz && \
+    apt install -y lsof && \
     rm -rf /var/lib/apt/lists/*
 
+# Install monitor
+RUN wget -q -O /usr/share/keyrings/grafana.key https://packages.grafana.com/gpg.key  && \
+    echo "deb [signed-by=/usr/share/keyrings/grafana.key] https://packages.grafana.com/oss/deb stable main" >> /etc/apt/sources.list.d/grafana.list && \
+    apt update && \
+    apt install -y grafana influxdb && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /etc/apt/sources.list.d/grafana.list
+
 RUN pip3 install --no-cache-dir absl-py
+RUN pip3 install --no-cache-dir protobuf numpy
+# For aiarena
+RUN pip3 install --no-cache-dir pyyaml psutil h5py
 
 # rl_framework
 COPY ./rl_framework/ /rl_framework/
@@ -47,20 +56,19 @@ WORKDIR /
 ENV GAMECORE_SERVER_BIND_ADDR=:23432
 ENV GAMECORE_SERVER_ADDR="127.0.0.1:23432"
 
+FROM dev_base as dev_base_v83
+ENV KAIWU_V83_GAMECORE=1
+
 # runtime /aiarena/code 3v3 dir
-FROM dev_base as code3v3
-COPY ./aiarena/3v3/actor /aiarena/code/actor
-COPY ./aiarena/3v3/learner /aiarena/code/learner
+FROM ${DEV_BASE} as code3v3
+ENV CAMP_DEFAULT_MODE=3v3
+COPY ./aiarena/3v3/ /aiarena/code/
 
 # runtime /aiarena/code 1v1 dir
-FROM dev_base as code1v1
-COPY ./aiarena/1v1/actor /aiarena/code/actor
-COPY ./aiarena/1v1/learner /aiarena/code/learner
-COPY ./aiarena/1v1/common /aiarena/code/common
+FROM ${DEV_BASE} as code1v1
+ENV CAMP_DEFAULT_MODE=1v1
+COPY ./aiarena/1v1/ /aiarena/code/
 
-FROM dev_base as battle
-COPY ./aiarena/1v1/actor /aiarena/1v1/actor
-COPY ./aiarena/1v1/learner /aiarena/1v1/learner
-COPY ./aiarena/1v1/common /aiarena/1v1/common
-COPY ./aiarena/3v3/actor /aiarena/3v3/actor
-COPY ./aiarena/3v3/learner /aiarena/3v3/learner
+FROM  ${DEV_BASE} as battle
+COPY ./aiarena/1v1/ /aiarena/1v1/
+COPY ./aiarena/3v3/ /aiarena/3v3/

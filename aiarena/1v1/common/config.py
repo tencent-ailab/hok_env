@@ -22,8 +22,15 @@ class DimConfig:
 
 class Config:
     backend = os.getenv("AIARENA_BACKEND", "pytorch")
+    actor_num = int(os.getenv("ACTOR_NUM", "1"))
+    auto_bind_cpu = os.getenv("AUTO_BIND_CPU", "0") == "1"
+
     # TODO refactor: learner only config
     use_init_model = os.getenv("AIARENA_USE_INIT_MODEL", "0") == "1"
+    init_model_path = os.getenv(
+        "AIARENA_INIT_MODEL_PATH", "/aiarena/code/learner/model/init/"
+    )
+    load_optimizer_state = os.getenv("AIARENA_LOAD_OPTIMIZER_STATE", "1") == "1"
     NETWORK_NAME = "network"
     LSTM_TIME_STEPS = 16
     LSTM_UNIT_SIZE = 512

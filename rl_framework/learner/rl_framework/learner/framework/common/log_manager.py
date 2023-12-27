@@ -5,7 +5,7 @@ import math
 import os
 import time
 
-import rl_framework.common.logging as LOG
+from rl_framework.common.logging import logger as LOG
 
 from rl_framework.learner.framework.common import *
 from rl_framework.monitor import InfluxdbMonitorHandler
