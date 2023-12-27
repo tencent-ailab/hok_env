@@ -51,7 +51,7 @@ jobs:
           cache-from: type=registry,ref=tencentailab/hok_env:buildcache_gpu_base
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu_base,mode=max
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v2.0.1
+            BASE_IMAGE=tencentailab/hok_env:base_common_py38_base_v2.0.2
       -
         name: Docker meta
         id: meta_gpu
@@ -77,4 +77,4 @@ jobs:
           cache-to: type=registry,ref=tencentailab/hok_env:buildcache_gpu,mode=max
           target: battle
           build-args: |
-            BASE_IMAGE=tencentailab/hok_env:gpu_base_v2.0.1
+            BASE_IMAGE=tencentailab/hok_env:gpu_base_v2.0.2

@@ -23,33 +23,6 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Docker meta
-        id: meta_build_python
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            tencentailab/hok_env
-          flavor: |
-            prefix=base_
-            latest=false
-          tags: |
-            type=sha,prefix=base_build_python38_
-            type=raw,value={{tag}},prefix=base_build_python38_
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta_build_python.outputs.tags }}
-          labels: ${{ steps.meta_build_python.outputs.labels }}
-          file: dockerfile/dockerfile.base
-          cache-from: type=registry,ref=tencentailab/hok_env:base_build_python38_buildcache
-          cache-to: type=registry,ref=tencentailab/hok_env:base_build_python38_buildcache,mode=max
-          target: build_python
-          build-args: |
-            PYTHON_VERSION=3.8.16
-      -
-        name: Docker meta
         id: meta_base_common_py38
         uses: docker/metadata-action@v4
         with:
@@ -72,5 +45,3 @@ jobs:
           file: dockerfile/dockerfile.base
           cache-from: type=registry,ref=tencentailab/hok_env:base_common_py38_buildcache
           cache-to: type=registry,ref=tencentailab/hok_env:base_common_py38_buildcache,mode=max
-          build-args: |
-            PYTHON_VERSION=3.8.16
