@@ -1,3 +1,28 @@
+# 20231228 v2.0.4
+rl_framework:
+1. refactor(logger): utilize logurus as logger 
+    `rl_framework.common.logging` should be replaced by `from rl_framework.common.logging import logger as LOG`.
+2. feat(model_manager): support `save_model_seconds`.
+3. feat(model_manager): send checkpoints without optimizer state to reduce disk usage cost.
+4. feat(send_model): support `backup_ckpt_only`.
+
+aiarena:
+1. fix(1v1/agent_demo): typos
+2. feat(1v1/agent_demo): return home if ego_hp_rate is less than 0.5.
+3. refactor(1v1/3v3): improve code and remove redundant configurations.
+4. feat(actor): support `auto_bind_cpu` to bind cpu_id for each actor process according to actor_id.
+5. feat(learner): support `load_optimizer_state`.
+6. fix(3v3/model): typos
+
+hok_env:
+1. feat(3v3): support reward configuration.
+
+Others:
+1. Introduce GitHub workflow to upload Python package hok to pypi for every release.
+2. Archive network.py for the 3v3 paper (cppo, mappo, ppo).
+3. Use a torch-only image, tensorflow training code is now deprecated.
+4. Update README.md.
+
 # 20230817
 
 1. Refactor aiarena/hok_env/rl_framework
