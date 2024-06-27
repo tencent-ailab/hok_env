@@ -12,7 +12,7 @@
 2. Start a container
 
     ```
-    docker run -it -p 35300-35400:35300-35400 tencentailab/hok_env:cpu_v2.0.1 bash
+    docker run -it -p 35000-35400:35000-35400 tencentailab/hok_env:cpu_v2.0.1 bash
     ```
 
 3. set the gamecore
