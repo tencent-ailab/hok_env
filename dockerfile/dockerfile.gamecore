@@ -22,13 +22,15 @@ FROM ${BASE_IMAGE} as wine_base
 
 RUN dpkg --add-architecture i386
 
-COPY ./3rd/winehq.key /usr/share/keyrings/winehq-archive.key
-
-RUN echo "deb [arch=amd64,i386 signed-by=/usr/share/keyrings/winehq-archive.key] https://mirrors.tuna.tsinghua.edu.cn/wine-builds/ubuntu/ focal main" >> /etc/apt/sources.list.d/winehq.list
+COPY ./3rd/wine_debs/ /tmp/wine_debs/
 
 RUN apt update && \
-    apt install --install-recommends -y winehq-stable && \
-    rm -rf /var/lib/apt/lists/*
+    apt install -y --no-install-recommends \
+        /tmp/wine_debs/wine-stable-amd64_*.deb \
+        /tmp/wine_debs/wine-stable-i386_*.deb \
+        /tmp/wine_debs/wine-stable_*.deb \
+        /tmp/wine_debs/winehq-stable_*.deb && \
+    rm -rf /tmp/wine_debs /var/lib/apt/lists/*
 
 ENV WINEDEBUG=-all
 
