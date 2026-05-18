@@ -15,7 +15,7 @@ class ResponceType(Enum):
 
 
 import numpy as np
-import hok.hok1v1.lib.interface as interface
+from hok.hok1v1.lib import interface as interface
 from hok.common.log import logger as LOG
 
 interface_default_config = os.path.join(os.path.dirname(__file__), "config.dat")
